@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance - Shah Alam City Academy</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+.container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+h1 { margin-bottom: 20px; color: #333; }
+h2 { margin: 20px 0 10px; color: #555; }
+.hidden { display: none; }
+button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; }
+.btn-primary { background: #0066cc; color: white; }
+.btn-danger { background: #cc0000; color: white; }
+.btn-success { background: #009900; color: white; }
+.btn-secondary { background: #666; color: white; }
+input, select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background: #f0f0f0; }
+.player-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+.player-name { flex: 1; }
+.attendance-btn { padding: 8px 16px; margin: 0 5px; cursor: pointer; border: 2px solid #ddd; background: white; border-radius: 4px; }
+.attendance-btn.hadir { border-color: #009900; color: #009900; }
+.attendance-btn.tidak { border-color: #cc0000; color: #cc0000; }
+.attendance-btn.selected.hadir { background: #009900; color: white; }
+.attendance-btn.selected.tidak { background: #cc0000; color: white; }
+.report-table td.absent { color: #cc0000; }
+.tabs { display: flex; gap: 5px; margin-bottom: 20px; }
+.tab { padding: 10px 20px; cursor: pointer; border: 1px solid #ddd; background: #f0f0f0; border-radius: 4px 4px 0 0; }
+.tab.active { background: #0066cc; color: white; border-color: #0066cc; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Shah Alam City Academy</h1>
+  <h2>Sistem Kehadiran 2026</h2>
+
+  <div id="loginView">
+    <h3>Login Admin</h3>
+    <input type="password" id="adminPassword" placeholder="Password">
+    <button class="btn-primary" onclick="adminLogin()">Login</button>
+    <p style="margin-top:10px;color:#666;">Coach? Gunakan link yang diberikan.</p>
+  </div>
+
+  <div id="adminView" class="hidden">
+    <div class="tabs">
+      <div class="tab active" onclick="showAdminTab('players')">Pemain</div>
+      <div class="tab" onclick="showAdminTab('attendance')">Kehadiran</div>
+      <div class="tab" onclick="showAdminTab('reports')">Laporan</div>
+      <div class="tab" onclick="showAdminTab('coaches')">Coach Links</div>
+    </div>
+
+    <div id="adminPlayers">
+      <h3>Urus Pemain</h3>
+      <select id="adminAgeGroup" onchange="loadAdminPlayers()">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12">U12</option>
+        <option value="U14">U14</option>
+        <option value="U16">U16</option>
+      </select>
+      
+      <div style="margin:15px 0;">
+        <input type="text" id="newPlayerName" placeholder="Nama pemain baru">
+        <button class="btn-success" onclick="addPlayer()">Tambah</button>
+      </div>
+
+      <div id="playerList"></div>
+    </div>
+
+    <div id="adminAttendance" class="hidden">
+      <h3>Kehadiran</h3>
+      <input type="date" id="adminDate" onchange="loadAdminAttendance()">
+      <select id="adminAttAgeGroup" onchange="loadAdminAttendance()">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12">U12</option>
+        <option value="U14">U14</option>
+        <option value="U16">U16</option>
+      </select>
+      <div id="adminAttendanceList"></div>
+    </div>
+
+    <div id="adminReports" class="hidden">
+      <h3>Laporan Bulanan</h3>
+      <select id="reportMonth">
+        <option value="01">Januari</option>
+        <option value="02">Februari</option>
+        <option value="03">Mac</option>
+        <option value="04">April</option>
+        <option value="05">Mei</option>
+        <option value="06">Jun</option>
+        <option value="07">Julai</option>
+        <option value="08">Ogos</option>
+        <option value="09">September</option>
+        <option value="10">Oktober</option>
+        <option value="11">November</option>
+        <option value="12">Disember</option>
+      </select>
+      <select id="reportYear">
+        <option value="2026">2026</option>
+      </select>
+      <select id="reportAgeGroup">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12">U12</option>
+        <option value="U14">U14</option>
+        <option value="U16">U16</option>
+      </select>
+      <button class="btn-primary" onclick="generateReport()">Jana Laporan</button>
+      <div id="reportOutput"></div>
+    </div>
+
+    <div id="adminCoaches" class="hidden">
+      <h3>Coach Links</h3>
+      <p>Generate link untuk coach:</p>
+      <select id="coachAgeGroup">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12">U12</option>
+        <option value="U14">U14</option>
+        <option value="U16">U16</option>
+      </select>
+      <input type="text" id="coachName" placeholder="Nama coach">
+      <button class="btn-primary" onclick="generateCoachLink()">Generate Link</button>
+      <div id="coachLinksList" style="margin-top:20px;"></div>
+    </div>
+
+    <button class="btn-secondary" onclick="logout()" style="margin-top:20px;">Logout</button>
+  </div>
+
+  <div id="coachView" class="hidden">
+    <h3 id="coachTitle">Kehadiran</h3>
+    <input type="date" id="coachDate" onchange="loadCoachAttendance()">
+    <div id="coachAttendanceList"></div>
+    <button class="btn-success" onclick="saveCoachAttendance()">Simpan</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDJ-2ydU4HEHkDblcdDNgLLFHEJ9L6Mji4",
+  authDomain: "academy-attendances.firebaseapp.com",
+  projectId: "academy-attendances",
+  storageBucket: "academy-attendances.firebasestorage.app",
+  messagingSenderId: "803403713115",
+  appId: "1:803403713115:web:3dd40d02a89120a7db0d7e"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let isAdmin = false;
+let currentCoach = null;
+let attendanceState = {};
+
+const AGE_GROUPS = ['U8', 'U10', 'U12', 'U14', 'U16'];
+
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  
+  if (token) {
+    loadCoachByToken(token);
+  } else {
+    document.getElementById('loginView').classList.remove('hidden');
+  }
+  
+  document.getElementById('adminDate').valueAsDate = new Date();
+  document.getElementById('coachDate').valueAsDate = new Date();
+  const now = new Date();
+  document.getElementById('reportMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+}
+
+async function adminLogin() {
+  const pwd = document.getElementById('adminPassword').value;
+  const doc = await db.collection('saca').doc('config').get();
+  
+  if (doc.exists && doc.data().adminPassword === pwd) {
+    isAdmin = true;
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('adminView').classList.remove('hidden');
+    loadAdminPlayers();
+  } else {
+    alert('Password salah!');
+  }
+}
+
+function logout() {
+  isAdmin = false;
+  currentCoach = null;
+  document.getElementById('adminView').classList.add('hidden');
+  document.getElementById('coachView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('adminPassword').value = '';
+}
+
+function showAdminTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  document.getElementById('adminPlayers').classList.add('hidden');
+  document.getElementById('adminAttendance').classList.add('hidden');
+  document.getElementById('adminReports').classList.add('hidden');
+  document.getElementById('adminCoaches').classList.add('hidden');
+  
+  if (tab === 'players') {
+    document.getElementById('adminPlayers').classList.remove('hidden');
+    loadAdminPlayers();
+  } else if (tab === 'attendance') {
+    document.getElementById('adminAttendance').classList.remove('hidden');
+    loadAdminAttendance();
+  } else if (tab === 'reports') {
+    document.getElementById('adminReports').classList.remove('hidden');
+  } else if (tab === 'coaches') {
+    document.getElementById('adminCoaches').classList.remove('hidden');
+    loadCoachLinks();
+  }
+}
+
+async function loadAdminPlayers() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  
+  const list = document.getElementById('playerList');
+  list.innerHTML = '';
+  
+  snapshot.forEach(doc => {
+    const player = doc.data();
+    const div = document.createElement('div');
+    div.className = 'player-row';
+    div.innerHTML = `
+      <span class="player-name">${player.name}</span>
+      <button class="btn-danger" onclick="removePlayer('${group}', '${doc.id}')">Buang</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function addPlayer() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const name = document.getElementById('newPlayerName').value.trim();
+  
+  if (!name) {
+    alert('Sila masukkan nama pemain!');
+    return;
+  }
+  
+  await db.collection('saca').doc('players').collection(group).add({
+    name: name,
+    active: true
+  });
+  
+  document.getElementById('newPlayerName').value = '';
+  loadAdminPlayers();
+}
+
+async function removePlayer(group, playerId) {
+  if (!confirm('Buang pemain ini?')) return;
+  
+  await db.collection('saca').doc('players').collection(group).doc(playerId).update({
+    active: false
+  });
+  
+  loadAdminPlayers();
+}
+
+async function loadAdminAttendance() {
+  const date = document.getElementById('adminDate').value;
+  const group = document.getElementById('adminAttAgeGroup').value;
+  
+  if (!date) return;
+  
+  const playersSnap = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const attSnap = await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').get();
+  
+  const attMap = {};
+  attSnap.forEach(doc => {
+    attMap[doc.id] = doc.data().status;
+  });
+  
+  const list = document.getElementById('adminAttendanceList');
+  list.innerHTML = '';
+  
+  playersSnap.forEach(doc => {
+    const player = doc.data();
+    const status = attMap[doc.id] || '';
+    
+    const div = document.createElement('div');
+    div.className = 'player-row';
+    div.innerHTML = `
+      <span class="player-name">${player.name}</span>
+      <button class="attendance-btn hadir ${status === 'hadir' ? 'selected' : ''}" onclick="toggleAttendance('${group}', '${doc.id}', 'hadir', this)">Hadir</button>
+      <button class="attendance-btn tidak ${status === 'tidak' ? 'selected' : ''}" onclick="toggleAttendance('${group}', '${doc.id}', 'tidak', this)">Tidak Hadir</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function toggleAttendance(group, playerId, status, btn) {
+  const date = document.getElementById('adminDate').value;
+  
+  await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').doc(playerId).set({
+    status: status,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.attendance-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function generateReport() {
+  const month = document.getElementById('reportMonth').value;
+  const year = document.getElementById('reportYear').value;
+  const group = document.getElementById('reportAgeGroup').value;
+  
+  const playersSnap = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const players = [];
+  playersSnap.forEach(doc => players.push({ id: doc.id, ...doc.data() }));
+  
+  const attendanceSnap = await db.collection('saca').doc('attendance').get();
+  const dates = [];
+  attendanceSnap.forEach(doc => {
+    const d = doc.id;
+    if (d.startsWith(`${year}-${month}`)) {
+      dates.push(d);
+    }
+  });
+  dates.sort();
+  
+  const report = {};
+  players.forEach(p => {
+    report[p.id] = { name: p.name, hadir: 0, tidak: 0, absentDates: [] };
+  });
+  
+  for (const date of dates) {
+    const recSnap = await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').get();
+    recSnap.forEach(doc => {
+      const playerId = doc.id;
+      if (report[playerId]) {
+        const status = doc.data().status;
+        if (status === 'hadir') {
+          report[playerId].hadir++;
+        } else {
+          report[playerId].tidak++;
+          report[playerId].absentDates.push(date);
+        }
+      }
+    });
+  }
+  
+  const output = document.getElementById('reportOutput');
+  let html = `<h4>Laporan ${month}/${year} - ${group}</h4>`;
+  html += '<table class="report-table"><tr><th>Nama</th><th>Hadir</th><th>Tidak Hadir</th><th>% Kehadiran</th><th>Tarikh Tidak Hadir</th></tr>';
+  
+  players.forEach(p => {
+    const r = report[p.id];
+    const total = r.hadir + r.tidak;
+    const pct = total > 0 ? Math.round((r.hadir / total) * 100) : 0;
+    html += `<tr>
+      <td>${r.name}</td>
+      <td>${r.hadir}</td>
+      <td class="absent">${r.tidak}</td>
+      <td>${pct}%</td>
+      <td class="absent">${r.absentDates.join(', ')}</td>
+    </tr>`;
+  });
+  
+  html += '</table>';
+  output.innerHTML = html;
+}
+
+async function generateCoachLink() {
+  const group = document.getElementById('coachAgeGroup').value;
+  const name = document.getElementById('coachName').value.trim();
+  
+  if (!name) {
+    alert('Sila masukkan nama coach!');
+    return;
+  }
+  
+  const token = 'coach_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  await db.collection('saca').doc('config').collection('coaches').doc(token).set({
+    name: name,
+    group: group,
+    active: true,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  
+  document.getElementById('coachName').value = '';
+  
+  const baseUrl = window.location.origin + window.location.pathname;
+  const link = `${baseUrl}?token=${token}`;
+  
+  alert(`Link dihasilkan:\n\n${link}\n\nCopy link ini dan berikan kepada coach.`);
+  
+  loadCoachLinks();
+}
+
+async function loadCoachLinks() {
+  const snapshot = await db.collection('saca').doc('config').collection('coaches').where('active', '==', true).get();
+  
+  const list = document.getElementById('coachLinksList');
+  list.innerHTML = '<h4>Coach Links Aktif:</h4>';
+  
+  const baseUrl = window.location.origin + window.location.pathname;
+  
+  snapshot.forEach(doc => {
+    const coach = doc.data();
+    const link = `${baseUrl}?token=${doc.id}`;
+    const div = document.createElement('div');
+    div.style.cssText = 'margin:10px 0;padding:10px;background:#f9f9f9;border-radius:4px;';
+    div.innerHTML = `
+      <strong>${coach.name}</strong> (${coach.group})<br>
+      <input type="text" value="${link}" readonly style="width:100%;margin-top:5px;" onclick="this.select()">
+      <button class="btn-danger" onclick="deactivateCoach('${doc.id}')" style="margin-top:5px;">Nyahaktif</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function deactivateCoach(token) {
+  if (!confirm('Nyahaktifkan coach ini?')) return;
+  
+  await db.collection('saca').doc('config').collection('coaches').doc(token).update({
+    active: false
+  });
+  
+  loadCoachLinks();
+}
+
+async function loadCoachByToken(token) {
+  const doc = await db.collection('saca').doc('config').collection('coaches').doc(token).get();
+  
+  if (!doc.exists || !doc.data().active) {
+    alert('Link tidak sah atau telah dinyhaktifkan!');
+    return;
+  }
+  
+  currentCoach = { token, ...doc.data() };
+  
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('coachView').classList.remove('hidden');
+  document.getElementById('coachTitle').textContent = `Kehadiran ${currentCoach.group} - ${currentCoach.name}`;
+  
+  loadCoachAttendance();
+}
+
+async function loadCoachAttendance() {
+  if (!currentCoach) return;
+  
+  const date = document.getElementById('coachDate').value;
+  const group = currentCoach.group;
+  
+  if (!date) return;
+  
+  const playersSnap = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const attSnap = await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').get();
+  
+  const attMap = {};
+  attSnap.forEach(doc => {
+    attMap[doc.id] = doc.data().status;
+  });
+  
+  attendanceState = {};
+  const list = document.getElementById('coachAttendanceList');
+  list.innerHTML = '';
+  
+  playersSnap.forEach(doc => {
+    const player = doc.data();
+    const status = attMap[doc.id] || '';
+    attendanceState[doc.id] = status;
+    
+    const div = document.createElement('div');
+    div.className = 'player-row';
+    div.innerHTML = `
+      <span class="player-name">${player.name}</span>
+      <button class="attendance-btn hadir ${status === 'hadir' ? 'selected' : ''}" onclick="coachToggleAttendance('${doc.id}', 'hadir', this)">Hadir</button>
+      <button class="attendance-btn tidak ${status === 'tidak' ? 'selected' : ''}" onclick="coachToggleAttendance('${doc.id}', 'tidak', this)">Tidak Hadir</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function coachToggleAttendance(playerId, status, btn) {
+  attendanceState[playerId] = status;
+  
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.attendance-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function saveCoachAttendance() {
+  if (!currentCoach) return;
+  
+  const date = document.getElementById('coachDate').value;
+  const group = currentCoach.group;
+  
+  const batch = db.batch();
+  
+  Object.keys(attendanceState).forEach(playerId => {
+    const status = attendanceState[playerId];
+    if (status) {
+      const ref = db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').doc(playerId);
+      batch.set(ref, {
+        status: status,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  });
+  
+  await batch.commit();
+  alert('Kehadiran disimpan!');
+}
+
+init();
+</script>
+
+</body>
+</html>
