@@ -279,11 +279,15 @@ async function loadAdminAttendance() {
   if (!date) return;
   
   const playersSnap = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
-  const attSnap = await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').get();
+  const attSnap = await db.collection('saca').doc('attendanceRecords').collection('records')
+    .where('date', '==', date)
+    .where('group', '==', group)
+    .get();
   
   const attMap = {};
   attSnap.forEach(doc => {
-    attMap[doc.id] = doc.data().status;
+    const data = doc.data();
+    attMap[data.playerId] = data.status;
   });
   
   const list = document.getElementById('adminAttendanceList');
@@ -306,8 +310,12 @@ async function loadAdminAttendance() {
 
 async function toggleAttendance(group, playerId, status, btn) {
   const date = document.getElementById('adminDate').value;
+  const docId = `${date}_${group}_${playerId}`;
   
-  await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').doc(playerId).set({
+  await db.collection('saca').doc('attendanceRecords').collection('records').doc(docId).set({
+    date: date,
+    group: group,
+    playerId: playerId,
     status: status,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -326,36 +334,32 @@ async function generateReport() {
   const players = [];
   playersSnap.forEach(doc => players.push({ id: doc.id, ...doc.data() }));
   
-  const attendanceSnap = await db.collection('saca').doc('attendance').get();
-  const dates = [];
-  attendanceSnap.forEach(doc => {
-    const d = doc.id;
-    if (d.startsWith(`${year}-${month}`)) {
-      dates.push(d);
-    }
-  });
-  dates.sort();
+  const attSnap = await db.collection('saca').doc('attendanceRecords').collection('records')
+    .where('group', '==', group)
+    .get();
   
   const report = {};
   players.forEach(p => {
     report[p.id] = { name: p.name, hadir: 0, tidak: 0, absentDates: [] };
   });
   
-  for (const date of dates) {
-    const recSnap = await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').get();
-    recSnap.forEach(doc => {
-      const playerId = doc.id;
+  attSnap.forEach(doc => {
+    const data = doc.data();
+    const d = data.date;
+    if (d.startsWith(`${year}-${month}`)) {
+      const playerId = data.playerId;
       if (report[playerId]) {
-        const status = doc.data().status;
-        if (status === 'hadir') {
+        if (data.status === 'hadir') {
           report[playerId].hadir++;
         } else {
           report[playerId].tidak++;
-          report[playerId].absentDates.push(date);
+          if (!report[playerId].absentDates.includes(d)) {
+            report[playerId].absentDates.push(d);
+          }
         }
       }
-    });
-  }
+    }
+  });
   
   const output = document.getElementById('reportOutput');
   let html = `<h4>Laporan ${month}/${year} - ${group}</h4>`;
@@ -370,7 +374,7 @@ async function generateReport() {
       <td>${r.hadir}</td>
       <td class="absent">${r.tidak}</td>
       <td>${pct}%</td>
-      <td class="absent">${r.absentDates.join(', ')}</td>
+      <td class="absent">${r.absentDates.sort().join(', ')}</td>
     </tr>`;
   });
   
@@ -464,11 +468,15 @@ async function loadCoachAttendance() {
   if (!date) return;
   
   const playersSnap = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
-  const attSnap = await db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').get();
+  const attSnap = await db.collection('saca').doc('attendanceRecords').collection('records')
+    .where('date', '==', date)
+    .where('group', '==', group)
+    .get();
   
   const attMap = {};
   attSnap.forEach(doc => {
-    attMap[doc.id] = doc.data().status;
+    const data = doc.data();
+    attMap[data.playerId] = data.status;
   });
   
   attendanceState = {};
@@ -510,8 +518,12 @@ async function saveCoachAttendance() {
   Object.keys(attendanceState).forEach(playerId => {
     const status = attendanceState[playerId];
     if (status) {
-      const ref = db.collection('saca').doc('attendance').collection(date).doc(group).collection('records').doc(playerId);
+      const docId = `${date}_${group}_${playerId}`;
+      const ref = db.collection('saca').doc('attendanceRecords').collection('records').doc(docId);
       batch.set(ref, {
+        date: date,
+        group: group,
+        playerId: playerId,
         status: status,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
