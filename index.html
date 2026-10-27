@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy</title>
+<title>Attendance - Shah Alam City Academy v1.2.0</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
@@ -38,12 +38,22 @@ th { background: #f0f0f0; }
 <div class="container">
   <h1>Shah Alam City Academy</h1>
   <h2>Sistem Kehadiran 2026</h2>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.2.0</p>
 
   <div id="loginView">
     <h3>Login Admin</h3>
     <input type="password" id="adminPassword" placeholder="Password">
     <button class="btn-primary" onclick="adminLogin()">Login</button>
-    <p style="margin-top:10px;color:#666;">Coach? Gunakan link yang diberikan.</p>
+    <hr style="margin:20px 0;">
+    <h3>Coach</h3>
+    <select id="coachAgeGroupSelect">
+      <option value="U8">U8</option>
+      <option value="U10">U10</option>
+      <option value="U12">U12</option>
+      <option value="U14">U14</option>
+      <option value="U16">U16</option>
+    </select>
+    <button class="btn-primary" onclick="coachLogin()">Mula</button>
   </div>
 
   <div id="adminView" class="hidden">
@@ -51,7 +61,6 @@ th { background: #f0f0f0; }
       <div class="tab active" onclick="showAdminTab('players')">Pemain</div>
       <div class="tab" onclick="showAdminTab('attendance')">Kehadiran</div>
       <div class="tab" onclick="showAdminTab('reports')">Laporan</div>
-      <div class="tab" onclick="showAdminTab('coaches')">Coach Links</div>
     </div>
 
     <div id="adminPlayers">
@@ -115,29 +124,15 @@ th { background: #f0f0f0; }
       <div id="reportOutput"></div>
     </div>
 
-    <div id="adminCoaches" class="hidden">
-      <h3>Coach Links</h3>
-      <p>Generate link untuk coach:</p>
-      <select id="coachAgeGroup">
-        <option value="U8">U8</option>
-        <option value="U10">U10</option>
-        <option value="U12">U12</option>
-        <option value="U14">U14</option>
-        <option value="U16">U16</option>
-      </select>
-      <input type="text" id="coachName" placeholder="Nama coach">
-      <button class="btn-primary" onclick="generateCoachLink()">Generate Link</button>
-      <div id="coachLinksList" style="margin-top:20px;"></div>
-    </div>
-
     <button class="btn-secondary" onclick="logout()" style="margin-top:20px;">Logout</button>
   </div>
 
   <div id="coachView" class="hidden">
-    <h3 id="coachTitle">Kehadiran</h3>
+    <h3>Kehadiran - <span id="coachGroupDisplay"></span></h3>
     <input type="date" id="coachDate" onchange="loadCoachAttendance()">
     <div id="coachAttendanceList"></div>
     <button class="btn-success" onclick="saveCoachAttendance()">Simpan</button>
+    <button class="btn-secondary" onclick="backToLogin()" style="margin-top:10px;">Kembali</button>
   </div>
 </div>
 
@@ -164,19 +159,28 @@ let attendanceState = {};
 const AGE_GROUPS = ['U8', 'U10', 'U12', 'U14', 'U16'];
 
 function init() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  
-  if (token) {
-    loadCoachByToken(token);
-  } else {
-    document.getElementById('loginView').classList.remove('hidden');
-  }
-  
+  document.getElementById('loginView').classList.remove('hidden');
   document.getElementById('adminDate').valueAsDate = new Date();
   document.getElementById('coachDate').valueAsDate = new Date();
   const now = new Date();
   document.getElementById('reportMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+}
+
+function coachLogin() {
+  const group = document.getElementById('coachAgeGroupSelect').value;
+  currentCoach = { group: group };
+  
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('coachView').classList.remove('hidden');
+  document.getElementById('coachGroupDisplay').textContent = group;
+  
+  loadCoachAttendance();
+}
+
+function backToLogin() {
+  currentCoach = null;
+  document.getElementById('coachView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
 }
 
 async function adminLogin() {
@@ -209,7 +213,6 @@ function showAdminTab(tab) {
   document.getElementById('adminPlayers').classList.add('hidden');
   document.getElementById('adminAttendance').classList.add('hidden');
   document.getElementById('adminReports').classList.add('hidden');
-  document.getElementById('adminCoaches').classList.add('hidden');
   
   if (tab === 'players') {
     document.getElementById('adminPlayers').classList.remove('hidden');
@@ -219,9 +222,6 @@ function showAdminTab(tab) {
     loadAdminAttendance();
   } else if (tab === 'reports') {
     document.getElementById('adminReports').classList.remove('hidden');
-  } else if (tab === 'coaches') {
-    document.getElementById('adminCoaches').classList.remove('hidden');
-    loadCoachLinks();
   }
 }
 
@@ -380,83 +380,6 @@ async function generateReport() {
   
   html += '</table>';
   output.innerHTML = html;
-}
-
-async function generateCoachLink() {
-  const group = document.getElementById('coachAgeGroup').value;
-  const name = document.getElementById('coachName').value.trim();
-  
-  if (!name) {
-    alert('Sila masukkan nama coach!');
-    return;
-  }
-  
-  const token = 'coach_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  
-  await db.collection('saca').doc('config').collection('coaches').doc(token).set({
-    name: name,
-    group: group,
-    active: true,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  
-  document.getElementById('coachName').value = '';
-  
-  const baseUrl = window.location.origin + window.location.pathname;
-  const link = `${baseUrl}?token=${token}`;
-  
-  alert(`Link dihasilkan:\n\n${link}\n\nCopy link ini dan berikan kepada coach.`);
-  
-  loadCoachLinks();
-}
-
-async function loadCoachLinks() {
-  const snapshot = await db.collection('saca').doc('config').collection('coaches').where('active', '==', true).get();
-  
-  const list = document.getElementById('coachLinksList');
-  list.innerHTML = '<h4>Coach Links Aktif:</h4>';
-  
-  const baseUrl = window.location.origin + window.location.pathname;
-  
-  snapshot.forEach(doc => {
-    const coach = doc.data();
-    const link = `${baseUrl}?token=${doc.id}`;
-    const div = document.createElement('div');
-    div.style.cssText = 'margin:10px 0;padding:10px;background:#f9f9f9;border-radius:4px;';
-    div.innerHTML = `
-      <strong>${coach.name}</strong> (${coach.group})<br>
-      <input type="text" value="${link}" readonly style="width:100%;margin-top:5px;" onclick="this.select()">
-      <button class="btn-danger" onclick="deactivateCoach('${doc.id}')" style="margin-top:5px;">Nyahaktif</button>
-    `;
-    list.appendChild(div);
-  });
-}
-
-async function deactivateCoach(token) {
-  if (!confirm('Nyahaktifkan coach ini?')) return;
-  
-  await db.collection('saca').doc('config').collection('coaches').doc(token).update({
-    active: false
-  });
-  
-  loadCoachLinks();
-}
-
-async function loadCoachByToken(token) {
-  const doc = await db.collection('saca').doc('config').collection('coaches').doc(token).get();
-  
-  if (!doc.exists || !doc.data().active) {
-    alert('Link tidak sah atau telah dinyhaktifkan!');
-    return;
-  }
-  
-  currentCoach = { token, ...doc.data() };
-  
-  document.getElementById('loginView').classList.add('hidden');
-  document.getElementById('coachView').classList.remove('hidden');
-  document.getElementById('coachTitle').textContent = `Kehadiran ${currentCoach.group} - ${currentCoach.name}`;
-  
-  loadCoachAttendance();
 }
 
 async function loadCoachAttendance() {
