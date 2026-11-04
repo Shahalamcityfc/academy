@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.7.0</title>
+<title>Attendance - Shah Alam City Academy v1.8.1</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
@@ -38,7 +38,7 @@ th { background: #f0f0f0; }
 <div class="container">
   <h1>Shah Alam City Academy</h1>
   <h2>Attendance System 2026</h2>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.7.0</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.8.1</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -75,10 +75,11 @@ th { background: #f0f0f0; }
         <option value="U16">U16</option>
       </select>
       
-      <div style="margin:15px 0;">
-        <input type="text" id="newPlayerName" placeholder="New player name">
+      <div style="margin:15px 0;display:flex;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="newPlayerName" placeholder="New player name" style="flex:1;min-width:150px;">
         <button class="btn-success" onclick="addPlayer()">Add</button>
         <button class="btn-primary" onclick="toggleBatchAdd()">Batch Add</button>
+        <button id="bulkDeleteBar" class="btn-danger hidden" style="margin-left:10px;" onclick="bulkRemovePlayers()">Remove Selected Players</button>
       </div>
 
       <div id="batchAddBox" class="hidden" style="margin:15px 0;padding:15px;background:#f0f7ff;border-radius:4px;">
@@ -105,9 +106,9 @@ th { background: #f0f0f0; }
         <button class="btn-primary" onclick="transferSelectedPlayers()">Transfer Selected Players</button>
       </div>
 
-      <div id="bulkDeleteBar" class="hidden" style="margin-top:15px;">
-        <button class="btn-danger" onclick="bulkRemovePlayers()">Remove Selected Players</button>
-      </div>
+      <hr style="margin:20px 0;">
+      <button class="btn-danger" onclick="resetAgeGroupData()">Reset <span id="resetGroupLabel">U8</span> Player List</button>
+      <p style="color:#999;font-size:12px;margin-top:5px;">Removes all players in the selected age group. Requires admin password.</p>
     </div>
 
     <div id="adminAttendance" class="hidden">
@@ -300,6 +301,7 @@ function showAdminTab(tab) {
 
 async function loadAdminPlayers() {
   const group = document.getElementById('adminAgeGroup').value;
+  document.getElementById('resetGroupLabel').textContent = group;
   const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
   
   const list = document.getElementById('playerList');
@@ -413,6 +415,28 @@ async function bulkRemovePlayers() {
   });
   await batch.commit();
   
+  loadAdminPlayers();
+}
+
+async function resetAgeGroupData() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const pwd = prompt(`Enter admin password to reset ${group} player list:`);
+  if (pwd === null) return;
+  
+  const doc = await db.collection('saca').doc('config').get();
+  if (!doc.exists || doc.data().adminPassword !== pwd) {
+    alert('Wrong password!');
+    return;
+  }
+  
+  if (!confirm(`Remove ALL players in ${group}? Attendance history will be kept.`)) return;
+  
+  const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const batch = db.batch();
+  snapshot.forEach(d => batch.update(d.ref, { active: false }));
+  await batch.commit();
+  
+  alert(`${snapshot.size} player(s) removed from ${group}.`);
   loadAdminPlayers();
 }
 
