@@ -3,42 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.8.1</title>
+<title>Attendance - Shah Alam City Academy v1.9.0</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-.container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; position: relative; }
-h1 { margin-bottom: 20px; color: #333; }
-h2 { margin: 20px 0 10px; color: #555; }
+:root {
+  --maroon: #800000;
+  --maroon-dark: #5C0000;
+  --maroon-deeper: #2E0000;
+  --gold: #FFA700;
+  --gold-light: #FFBE33;
+  --white: #FFFFFF;
+  --off-white: #F5F0E8;
+  --black: #0D0D0D;
+  --dark: #141414;
+  --dark-2: #1C1C1C;
+  --gray: #999;
+  --gray-light: #D9D9D9;
+  --green: #25D366;
+  --green-dark: #1da851;
+  --red-bright: #ff6b6b;
+}
+body { font-family: 'Segoe UI', system-ui, Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: var(--black); color: var(--off-white); }
+.container { max-width: 800px; margin: 0 auto; background: var(--dark); padding: 20px; border-radius: 14px; position: relative; border: 1px solid rgba(255,167,0,0.15); }
+h1 { margin-bottom: 0; color: var(--white); text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.6rem; }
+h2 { margin: 4px 0 0; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; font-size: 1.1rem; }
+.brand-header { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
+.club-logo { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; }
+h3 { color: var(--white); margin-bottom: 10px; }
+h4 { color: var(--white); margin: 10px 0; }
 .hidden { display: none; }
-button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; }
-.btn-primary { background: #0066cc; color: white; }
+button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; font-weight: 700; transition: 0.2s; }
+.btn-primary { background: var(--gold); color: var(--black); }
+.btn-primary:hover { background: var(--gold-light); }
 .btn-danger { background: #cc0000; color: white; }
-.btn-success { background: #009900; color: white; }
-.btn-secondary { background: #666; color: white; }
-input, select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+.btn-danger:hover { background: #e60000; }
+.btn-success { background: var(--maroon); color: var(--white); }
+.btn-success:hover { background: var(--maroon-dark); }
+.btn-secondary { background: var(--dark-2); color: var(--gray-light); border: 1px solid #444; }
+.btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+input, select { padding: 8px; margin: 5px; border: 1px solid #444; border-radius: 4px; font-size: 14px; background: var(--dark-2); color: var(--off-white); }
+textarea { background: var(--dark-2); color: var(--off-white); border: 1px solid #444; border-radius: 4px; font-family: inherit; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--gold); }
 table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-th { background: #f0f0f0; }
-.player-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
-.player-name { flex: 1; }
-.attendance-btn { padding: 8px 16px; margin: 0 5px; cursor: pointer; border: 2px solid #ddd; background: white; border-radius: 4px; }
-.attendance-btn.hadir { border-color: #009900; color: #009900; }
-.attendance-btn.tidak { border-color: #cc0000; color: #cc0000; }
-.attendance-btn.selected.hadir { background: #009900; color: white; }
-.attendance-btn.selected.tidak { background: #cc0000; color: white; }
-.report-table td.absent { color: #cc0000; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a2a; }
+th { background: var(--maroon-dark); color: var(--white); text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+tr:hover td { background: rgba(255,167,0,0.05); }
+.player-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #2a2a2a; }
+.player-name { flex: 1; color: var(--white); }
+.attendance-btn { padding: 8px 16px; margin: 0 5px; cursor: pointer; border: 2px solid #444; background: var(--dark-2); color: var(--gray-light); border-radius: 4px; font-weight: 700; }
+.attendance-btn.hadir { border-color: var(--green); color: var(--green); background: transparent; }
+.attendance-btn.tidak { border-color: #cc0000; color: var(--red-bright); background: transparent; }
+.attendance-btn.selected.hadir { background: var(--green-dark); border-color: var(--green-dark); color: white; }
+.attendance-btn.selected.tidak { background: #cc0000; border-color: #cc0000; color: white; }
+.report-table td.absent { color: var(--red-bright); }
 .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
-.tab { padding: 10px 20px; cursor: pointer; border: 1px solid #ddd; background: #f0f0f0; border-radius: 4px 4px 0 0; }
-.tab.active { background: #0066cc; color: white; border-color: #0066cc; }
+.tab { padding: 10px 20px; cursor: pointer; border: 1px solid #333; background: var(--dark-2); color: var(--gray-light); border-radius: 4px 4px 0 0; font-weight: 700; }
+.tab.active { background: var(--gold); color: var(--black); border-color: var(--gold); }
+hr { border: none; border-top: 1px solid #2a2a2a; }
+#batchAddBox { background: var(--dark-2) !important; border: 1px solid #333; }
+a { color: var(--gold); }
+
+/* ===== MOBILE ===== */
+@media (max-width: 600px) {
+  body { padding: 10px; }
+  .container { padding: 14px; }
+  .brand-header { gap: 10px; }
+  .club-logo { width: 48px; height: 48px; }
+  h1 { font-size: 1.15rem; padding-right: 90px; }
+  h2 { font-size: 0.85rem; letter-spacing: 1px; }
+  .tabs { flex-wrap: wrap; }
+  .tab { flex: 1; text-align: center; padding: 8px 4px; font-size: 12px; white-space: nowrap; }
+  button { padding: 8px 12px; font-size: 13px; }
+  input, select { padding: 7px; font-size: 13px; }
+  th, td { padding: 6px; font-size: 12px; }
+  #reportOutput { overflow-x: auto; }
+  .report-table { min-width: 540px; }
+  .player-row { flex-wrap: wrap; row-gap: 8px; }
+  .player-row > label:not(.fee-radio) { flex: 1 1 100% !important; }
+  .player-row > .player-name { flex: 1 1 100% !important; }
+  .player-row > select { flex: 1 1 130px; }
+  .player-row > button { flex: 1 1 0; margin: 0 5px; }
+  .player-row > label.fee-radio { flex: 1 1 0; justify-content: center; }
+  .attendance-btn { flex: 1 1 0; padding: 8px 10px; text-align: center; }
+}
 </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>Shah Alam City Academy</h1>
-  <h2>Attendance System 2026</h2>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.8.1</p>
+  <div class="brand-header">
+    <img src="logo.jpg" alt="Shah Alam City FC" class="club-logo">
+    <div>
+      <h1>Shah Alam City Academy</h1>
+      <h2>Attendance System 2026</h2>
+    </div>
+  </div>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.9.0</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -82,12 +142,12 @@ th { background: #f0f0f0; }
         <button id="bulkDeleteBar" class="btn-danger hidden" style="margin-left:10px;" onclick="bulkRemovePlayers()">Remove Selected Players</button>
       </div>
 
-      <div id="batchAddBox" class="hidden" style="margin:15px 0;padding:15px;background:#f0f7ff;border-radius:4px;">
+      <div id="batchAddBox" class="hidden" style="margin:15px 0;padding:15px;background:#1C1C1C;border-radius:4px;border:1px solid #333;">
         <h4>Quick Edit All Names</h4>
         <textarea id="batchNames" rows="8" style="width:100%;padding:10px;font-size:14px;" placeholder="Enter one name per line"></textarea>
         <button class="btn-success" onclick="batchAddPlayers()">Save</button>
         <button class="btn-secondary" onclick="toggleBatchAdd()">Cancel</button>
-        <p style="color:#666;font-size:12px;margin-top:5px;">One name per line. Existing names will not be duplicated.</p>
+        <p style="color:#999;font-size:12px;margin-top:5px;">One name per line. Existing names will not be duplicated.</p>
       </div>
 
       <div id="playerList"></div>
@@ -683,7 +743,7 @@ function renderReportTable() {
       <td>${r.hadir}</td>
       <td class="absent">${r.tidak}</td>
       <td>${r.pct}%</td>
-      <td style="color:${r.paidNum ? '#009900' : '#cc0000'};">${r.feeText}</td>
+      <td style="color:${r.paidNum ? '#25D366' : '#ff6b6b'};">${r.feeText}</td>
       <td class="absent">${r.absentDates}</td>
     </tr>`;
   });
@@ -765,11 +825,11 @@ async function loadFeeList() {
     const div = document.createElement('div');
     div.className = 'player-row';
     div.innerHTML = `
-      <span class="player-name">${player.name} <small style="color:#666;">(${player.fee || 'fee not set'})</small></span>
-      <label style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
+      <span class="player-name">${player.name} <small style="color:#999;">(${player.fee || 'fee not set'})</small></span>
+      <label class="fee-radio" style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
         <input type="radio" name="fee_${doc.id}" ${paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = true"> Paid
       </label>
-      <label style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
+      <label class="fee-radio" style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
         <input type="radio" name="fee_${doc.id}" ${!paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = false"> Unpaid
       </label>
     `;
