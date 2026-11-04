@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.9.0</title>
+<title>Attendance - Shah Alam City Academy v1.9.1</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -98,7 +98,7 @@ a { color: var(--gold); }
       <h2>Attendance System 2026</h2>
     </div>
   </div>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.9.0</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.9.1</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -151,6 +151,10 @@ a { color: var(--gold); }
       </div>
 
       <div id="playerList"></div>
+
+      <div id="feeSaveAllBar" class="hidden" style="margin-top:15px;">
+        <button class="btn-success" onclick="saveAllFees()">Save All Fee Changes</button>
+      </div>
 
       <div id="bulkTransferBar" class="hidden" style="margin-top:15px;">
         <label style="display:inline-flex;align-items:center;gap:5px;">
@@ -359,10 +363,15 @@ function showAdminTab(tab) {
   }
 }
 
+let feePending = {};
+
 async function loadAdminPlayers() {
   const group = document.getElementById('adminAgeGroup').value;
   document.getElementById('resetGroupLabel').textContent = group;
   const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  
+  feePending = {};
+  document.getElementById('feeSaveAllBar').classList.add('hidden');
   
   const list = document.getElementById('playerList');
   list.innerHTML = `
@@ -383,7 +392,7 @@ async function loadAdminPlayers() {
         <input type="checkbox" class="player-check" data-id="${doc.id}" onchange="updateBulkDeleteBar()">
         <span class="player-name">${player.name}</span>
       </label>
-      <select id="fee_${doc.id}" style="margin:0;">
+      <select id="fee_${doc.id}" style="margin:0;" data-original="${player.fee || ''}" onchange="onFeeSelectChange('${doc.id}', this)">
         <option value="">- Select fee -</option>
         <option value="RM120" ${player.fee === 'RM120' ? 'selected' : ''}>RM120</option>
         <option value="RM80" ${player.fee === 'RM80' ? 'selected' : ''}>RM80</option>
@@ -397,6 +406,30 @@ async function loadAdminPlayers() {
   
   document.getElementById('bulkTransferBar').classList.add('hidden');
   document.getElementById('bulkDeleteBar').classList.add('hidden');
+}
+
+function onFeeSelectChange(playerId, selectEl) {
+  if (selectEl.value === selectEl.dataset.original) {
+    delete feePending[playerId];
+  } else {
+    feePending[playerId] = selectEl.value;
+  }
+  document.getElementById('feeSaveAllBar').classList.toggle('hidden', Object.keys(feePending).length === 0);
+}
+
+async function saveAllFees() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const ids = Object.keys(feePending);
+  if (ids.length === 0) return;
+  
+  const batch = db.batch();
+  ids.forEach(id => {
+    batch.update(db.collection('saca').doc('players').collection(group).doc(id), { fee: feePending[id] });
+  });
+  await batch.commit();
+  
+  alert(`${ids.length} fee change(s) saved!`);
+  loadAdminPlayers();
 }
 
 function updateBulkDeleteBar() {
