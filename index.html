@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.2.0</title>
+<title>Attendance - Shah Alam City Academy v1.7.0</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-.container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+.container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; position: relative; }
 h1 { margin-bottom: 20px; color: #333; }
 h2 { margin: 20px 0 10px; color: #555; }
 .hidden { display: none; }
@@ -37,12 +37,12 @@ th { background: #f0f0f0; }
 
 <div class="container">
   <h1>Shah Alam City Academy</h1>
-  <h2>Sistem Kehadiran 2026</h2>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.2.0</p>
+  <h2>Attendance System 2026</h2>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.7.0</p>
 
   <div id="loginView">
-    <h3>Login Admin</h3>
-    <input type="password" id="adminPassword" placeholder="Password">
+    <h3>Admin Login</h3>
+    <input type="password" id="adminPassword" placeholder="Password" onkeydown="if(event.key==='Enter') adminLogin()">
     <button class="btn-primary" onclick="adminLogin()">Login</button>
     <hr style="margin:20px 0;">
     <h3>Coach</h3>
@@ -53,18 +53,20 @@ th { background: #f0f0f0; }
       <option value="U14">U14</option>
       <option value="U16">U16</option>
     </select>
-    <button class="btn-primary" onclick="coachLogin()">Mula</button>
+    <button class="btn-primary" onclick="coachLogin()">Start</button>
   </div>
 
   <div id="adminView" class="hidden">
+    <button class="btn-secondary" onclick="logout()" style="position:absolute;top:20px;right:20px;">Logout</button>
     <div class="tabs">
-      <div class="tab active" onclick="showAdminTab('players')">Pemain</div>
-      <div class="tab" onclick="showAdminTab('attendance')">Kehadiran</div>
-      <div class="tab" onclick="showAdminTab('reports')">Laporan</div>
+      <div class="tab active" onclick="showAdminTab('players')">Players</div>
+      <div class="tab" onclick="showAdminTab('attendance')">Attendance</div>
+      <div class="tab" onclick="showAdminTab('fees')">Fees</div>
+      <div class="tab" onclick="showAdminTab('reports')">Reports</div>
     </div>
 
     <div id="adminPlayers">
-      <h3>Urus Pemain</h3>
+      <h3>Manage Players</h3>
       <select id="adminAgeGroup" onchange="loadAdminPlayers()">
         <option value="U8">U8</option>
         <option value="U10">U10</option>
@@ -74,15 +76,42 @@ th { background: #f0f0f0; }
       </select>
       
       <div style="margin:15px 0;">
-        <input type="text" id="newPlayerName" placeholder="Nama pemain baru">
-        <button class="btn-success" onclick="addPlayer()">Tambah</button>
+        <input type="text" id="newPlayerName" placeholder="New player name">
+        <button class="btn-success" onclick="addPlayer()">Add</button>
+        <button class="btn-primary" onclick="toggleBatchAdd()">Batch Add</button>
+      </div>
+
+      <div id="batchAddBox" class="hidden" style="margin:15px 0;padding:15px;background:#f0f7ff;border-radius:4px;">
+        <h4>Quick Edit All Names</h4>
+        <textarea id="batchNames" rows="8" style="width:100%;padding:10px;font-size:14px;" placeholder="Enter one name per line"></textarea>
+        <button class="btn-success" onclick="batchAddPlayers()">Save</button>
+        <button class="btn-secondary" onclick="toggleBatchAdd()">Cancel</button>
+        <p style="color:#666;font-size:12px;margin-top:5px;">One name per line. Existing names will not be duplicated.</p>
       </div>
 
       <div id="playerList"></div>
+
+      <div id="bulkTransferBar" class="hidden" style="margin-top:15px;">
+        <label style="display:inline-flex;align-items:center;gap:5px;">
+          Transfer to:
+          <select id="transferTargetGroup">
+            <option value="U8">U8</option>
+            <option value="U10">U10</option>
+            <option value="U12">U12</option>
+            <option value="U14">U14</option>
+            <option value="U16">U16</option>
+          </select>
+        </label>
+        <button class="btn-primary" onclick="transferSelectedPlayers()">Transfer Selected Players</button>
+      </div>
+
+      <div id="bulkDeleteBar" class="hidden" style="margin-top:15px;">
+        <button class="btn-danger" onclick="bulkRemovePlayers()">Remove Selected Players</button>
+      </div>
     </div>
 
     <div id="adminAttendance" class="hidden">
-      <h3>Kehadiran</h3>
+      <h3>Attendance</h3>
       <input type="date" id="adminDate" onchange="loadAdminAttendance()">
       <select id="adminAttAgeGroup" onchange="loadAdminAttendance()">
         <option value="U8">U8</option>
@@ -95,20 +124,20 @@ th { background: #f0f0f0; }
     </div>
 
     <div id="adminReports" class="hidden">
-      <h3>Laporan Bulanan</h3>
+      <h3>Monthly Report</h3>
       <select id="reportMonth">
-        <option value="01">Januari</option>
-        <option value="02">Februari</option>
-        <option value="03">Mac</option>
+        <option value="01">January</option>
+        <option value="02">February</option>
+        <option value="03">March</option>
         <option value="04">April</option>
-        <option value="05">Mei</option>
-        <option value="06">Jun</option>
-        <option value="07">Julai</option>
-        <option value="08">Ogos</option>
+        <option value="05">May</option>
+        <option value="06">June</option>
+        <option value="07">July</option>
+        <option value="08">August</option>
         <option value="09">September</option>
-        <option value="10">Oktober</option>
+        <option value="10">October</option>
         <option value="11">November</option>
-        <option value="12">Disember</option>
+        <option value="12">December</option>
       </select>
       <select id="reportYear">
         <option value="2026">2026</option>
@@ -120,24 +149,63 @@ th { background: #f0f0f0; }
         <option value="U14">U14</option>
         <option value="U16">U16</option>
       </select>
-      <button class="btn-primary" onclick="generateReport()">Jana Laporan</button>
+      <button class="btn-primary" onclick="generateReport()">Generate Report</button>
+      <div id="reportExportBar" class="hidden" style="margin-top:15px;">
+        <button class="btn-success" onclick="exportReportExcel()">Export to Excel (.xlsx)</button>
+        <button class="btn-primary" onclick="exportReportPDF()">Export to PDF</button>
+      </div>
       <div id="reportOutput"></div>
     </div>
 
-    <button class="btn-secondary" onclick="logout()" style="margin-top:20px;">Logout</button>
+    <div id="adminFees" class="hidden">
+      <h3>Monthly Fees</h3>
+      <select id="feeAgeGroup">
+        <option value="U8">U8</option>
+        <option value="U10">U10</option>
+        <option value="U12">U12</option>
+        <option value="U14">U14</option>
+        <option value="U16">U16</option>
+      </select>
+      <select id="feeMonth">
+        <option value="01">January</option>
+        <option value="02">February</option>
+        <option value="03">March</option>
+        <option value="04">April</option>
+        <option value="05">May</option>
+        <option value="06">June</option>
+        <option value="07">July</option>
+        <option value="08">August</option>
+        <option value="09">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+      <select id="feeYear">
+        <option value="2026">2026</option>
+        <option value="2027">2027</option>
+      </select>
+      <button class="btn-primary" onclick="loadFeeList()">Load</button>
+      <div id="feeList"></div>
+      <div id="feeSaveBar" class="hidden" style="margin-top:15px;">
+        <button class="btn-success" onclick="saveFeePayments()">Save Payment Status</button>
+      </div>
+    </div>
   </div>
 
   <div id="coachView" class="hidden">
-    <h3>Kehadiran - <span id="coachGroupDisplay"></span></h3>
+    <h3>Attendance - <span id="coachGroupDisplay"></span></h3>
     <input type="date" id="coachDate" onchange="loadCoachAttendance()">
     <div id="coachAttendanceList"></div>
-    <button class="btn-success" onclick="saveCoachAttendance()">Simpan</button>
-    <button class="btn-secondary" onclick="backToLogin()" style="margin-top:10px;">Kembali</button>
+    <button class="btn-success" onclick="saveCoachAttendance()">Save</button>
+    <button class="btn-secondary" onclick="backToLogin()" style="margin-top:10px;">Back</button>
   </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <script>
 const firebaseConfig = {
@@ -164,6 +232,8 @@ function init() {
   document.getElementById('coachDate').valueAsDate = new Date();
   const now = new Date();
   document.getElementById('reportMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('feeMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('feeYear').value = String(now.getFullYear());
 }
 
 function coachLogin() {
@@ -193,7 +263,7 @@ async function adminLogin() {
     document.getElementById('adminView').classList.remove('hidden');
     loadAdminPlayers();
   } else {
-    alert('Password salah!');
+    alert('Wrong password!');
   }
 }
 
@@ -213,6 +283,7 @@ function showAdminTab(tab) {
   document.getElementById('adminPlayers').classList.add('hidden');
   document.getElementById('adminAttendance').classList.add('hidden');
   document.getElementById('adminReports').classList.add('hidden');
+  document.getElementById('adminFees').classList.add('hidden');
   
   if (tab === 'players') {
     document.getElementById('adminPlayers').classList.remove('hidden');
@@ -222,6 +293,8 @@ function showAdminTab(tab) {
     loadAdminAttendance();
   } else if (tab === 'reports') {
     document.getElementById('adminReports').classList.remove('hidden');
+  } else if (tab === 'fees') {
+    document.getElementById('adminFees').classList.remove('hidden');
   }
 }
 
@@ -230,18 +303,117 @@ async function loadAdminPlayers() {
   const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
   
   const list = document.getElementById('playerList');
-  list.innerHTML = '';
+  list.innerHTML = `
+    <div class="player-row" style="font-weight:bold;">
+      <label style="display:flex;align-items:center;gap:8px;flex:1;">
+        <input type="checkbox" id="selectAllPlayers" onchange="toggleSelectAll(this.checked)">
+        <span>Select All</span>
+      </label>
+    </div>
+  `;
   
   snapshot.forEach(doc => {
     const player = doc.data();
     const div = document.createElement('div');
     div.className = 'player-row';
     div.innerHTML = `
-      <span class="player-name">${player.name}</span>
-      <button class="btn-danger" onclick="removePlayer('${group}', '${doc.id}')">Buang</button>
+      <label style="display:flex;align-items:center;gap:8px;flex:1;">
+        <input type="checkbox" class="player-check" data-id="${doc.id}" onchange="updateBulkDeleteBar()">
+        <span class="player-name">${player.name}</span>
+      </label>
+      <select id="fee_${doc.id}" style="margin:0;">
+        <option value="">- Select fee -</option>
+        <option value="RM120" ${player.fee === 'RM120' ? 'selected' : ''}>RM120</option>
+        <option value="RM80" ${player.fee === 'RM80' ? 'selected' : ''}>RM80</option>
+        <option value="Scholarship" ${player.fee === 'Scholarship' ? 'selected' : ''}>Scholarship</option>
+      </select>
+      <button class="btn-success" onclick="savePlayerFee('${group}', '${doc.id}')" style="margin:0 5px;">Save</button>
+      <button class="btn-danger" onclick="removePlayer('${group}', '${doc.id}')">Remove</button>
     `;
     list.appendChild(div);
   });
+  
+  document.getElementById('bulkTransferBar').classList.add('hidden');
+  document.getElementById('bulkDeleteBar').classList.add('hidden');
+}
+
+function updateBulkDeleteBar() {
+  const selectedCount = document.querySelectorAll('.player-check:checked').length;
+  document.getElementById('bulkTransferBar').classList.toggle('hidden', selectedCount < 1);
+  document.getElementById('bulkDeleteBar').classList.toggle('hidden', selectedCount < 2);
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.player-check').forEach(cb => cb.checked = checked);
+  updateBulkDeleteBar();
+}
+
+async function savePlayerFee(group, playerId) {
+  const fee = document.getElementById('fee_' + playerId).value;
+  if (!fee) {
+    alert('Please select a fee first!');
+    return;
+  }
+  await db.collection('saca').doc('players').collection(group).doc(playerId).update({ fee: fee });
+  alert('Player fee saved!');
+}
+
+async function transferSelectedPlayers() {
+  const fromGroup = document.getElementById('adminAgeGroup').value;
+  const toGroup = document.getElementById('transferTargetGroup').value;
+  
+  if (toGroup === fromGroup) {
+    alert('Source and destination groups are the same!');
+    return;
+  }
+  
+  const selected = [];
+  document.querySelectorAll('.player-check:checked').forEach(cb => selected.push(cb.dataset.id));
+  
+  if (selected.length === 0) {
+    alert('No players selected!');
+    return;
+  }
+  
+  if (!confirm(`Transfer ${selected.length} player(s) from ${fromGroup} to ${toGroup}?`)) return;
+  
+  const batch = db.batch();
+  for (const id of selected) {
+    const docRef = db.collection('saca').doc('players').collection(fromGroup).doc(id);
+    const docSnap = await docRef.get();
+    if (docSnap.exists) {
+      batch.set(db.collection('saca').doc('players').collection(toGroup).doc(id), {
+        name: docSnap.data().name,
+        active: true
+      });
+      batch.delete(docRef);
+    }
+  }
+  
+  await batch.commit();
+  alert(`${selected.length} player(s) transferred to ${toGroup}.`);
+  loadAdminPlayers();
+}
+
+async function bulkRemovePlayers() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const selected = [];
+  document.querySelectorAll('.player-check:checked').forEach(cb => selected.push(cb.dataset.id));
+  
+  if (selected.length === 0) {
+    alert('No players selected!');
+    return;
+  }
+  
+  if (!confirm(`Remove ${selected.length} selected player(s)?`)) return;
+  
+  const batch = db.batch();
+  selected.forEach(id => {
+    batch.update(db.collection('saca').doc('players').collection(group).doc(id), { active: false });
+  });
+  await batch.commit();
+  
+  loadAdminPlayers();
 }
 
 async function addPlayer() {
@@ -249,7 +421,7 @@ async function addPlayer() {
   const name = document.getElementById('newPlayerName').value.trim();
   
   if (!name) {
-    alert('Sila masukkan nama pemain!');
+    alert('Please enter player name!');
     return;
   }
   
@@ -262,8 +434,53 @@ async function addPlayer() {
   loadAdminPlayers();
 }
 
+function toggleBatchAdd() {
+  const box = document.getElementById('batchAddBox');
+  if (box.classList.contains('hidden')) {
+    box.classList.remove('hidden');
+    document.getElementById('batchNames').value = '';
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
+async function batchAddPlayers() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const raw = document.getElementById('batchNames').value;
+  const names = raw.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+  
+  if (names.length === 0) {
+    alert('Please enter at least one name!');
+    return;
+  }
+  
+  // Add new players only; existing names are skipped
+  const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const batch = db.batch();
+  const existing = {};
+  snapshot.forEach(doc => {
+    existing[doc.data().name.toLowerCase()] = doc.id;
+  });
+  
+  let added = 0;
+  names.forEach(name => {
+    if (!existing[name.toLowerCase()]) {
+      batch.set(db.collection('saca').doc('players').collection(group).doc(), {
+        name: name,
+        active: true
+      });
+      added++;
+    }
+  });
+  
+  await batch.commit();
+  alert(`${added} new player(s) added.`);
+  document.getElementById('batchAddBox').classList.add('hidden');
+  loadAdminPlayers();
+}
+
 async function removePlayer(group, playerId) {
-  if (!confirm('Buang pemain ini?')) return;
+  if (!confirm('Remove this player?')) return;
   
   await db.collection('saca').doc('players').collection(group).doc(playerId).update({
     active: false
@@ -301,8 +518,8 @@ async function loadAdminAttendance() {
     div.className = 'player-row';
     div.innerHTML = `
       <span class="player-name">${player.name}</span>
-      <button class="attendance-btn hadir ${status === 'hadir' ? 'selected' : ''}" onclick="toggleAttendance('${group}', '${doc.id}', 'hadir', this)">Hadir</button>
-      <button class="attendance-btn tidak ${status === 'tidak' ? 'selected' : ''}" onclick="toggleAttendance('${group}', '${doc.id}', 'tidak', this)">Tidak Hadir</button>
+      <button class="attendance-btn hadir ${status === 'hadir' ? 'selected' : ''}" onclick="toggleAttendance('${group}', '${doc.id}', 'hadir', this)">Present</button>
+      <button class="attendance-btn tidak ${status === 'tidak' ? 'selected' : ''}" onclick="toggleAttendance('${group}', '${doc.id}', 'tidak', this)">Absent</button>
     `;
     list.appendChild(div);
   });
@@ -338,6 +555,16 @@ async function generateReport() {
     .where('group', '==', group)
     .get();
   
+  const paySnap = await db.collection('saca').doc('feePayments').collection('records')
+    .where('month', '==', `${year}-${month}`)
+    .where('group', '==', group)
+    .get();
+  const payMap = {};
+  paySnap.forEach(doc => {
+    const data = doc.data();
+    payMap[data.playerId] = data.paid;
+  });
+  
   const report = {};
   players.forEach(p => {
     report[p.id] = { name: p.name, hadir: 0, tidak: 0, absentDates: [] };
@@ -361,25 +588,192 @@ async function generateReport() {
     }
   });
   
-  const output = document.getElementById('reportOutput');
-  let html = `<h4>Laporan ${month}/${year} - ${group}</h4>`;
-  html += '<table class="report-table"><tr><th>Nama</th><th>Hadir</th><th>Tidak Hadir</th><th>% Kehadiran</th><th>Tarikh Tidak Hadir</th></tr>';
-  
-  players.forEach(p => {
+  const rows = players.map(p => {
     const r = report[p.id];
     const total = r.hadir + r.tidak;
     const pct = total > 0 ? Math.round((r.hadir / total) * 100) : 0;
+    const paid = payMap[p.id] === true;
+    return {
+      name: r.name,
+      hadir: r.hadir,
+      tidak: r.tidak,
+      pct: pct,
+      paidNum: paid ? 1 : 0,
+      feeText: `${p.fee || 'not set'} - ${paid ? 'Paid' : 'Unpaid'}`,
+      absentDates: r.absentDates.sort().join(', '),
+      absentCount: r.tidak
+    };
+  });
+  
+  reportRows = rows;
+  reportMeta = { month: month, year: year, group: group };
+  reportHeader = `<h4>Report ${month}/${year} - ${group}</h4>`;
+  reportSort = { col: -1, dir: 1 };
+  document.getElementById('reportExportBar').classList.remove('hidden');
+  renderReportTable();
+}
+
+let reportRows = [];
+let reportHeader = '';
+let reportSort = { col: -1, dir: 1 };
+let reportMeta = null;
+
+function getSortedReportRows() {
+  const cols = ['name', 'hadir', 'tidak', 'pct', 'paidNum', 'absentCount'];
+  const rows = [...reportRows];
+  if (reportSort.col >= 0) {
+    const key = cols[reportSort.col];
+    rows.sort((a, b) => {
+      const va = a[key], vb = b[key];
+      if (typeof va === 'number') return (va - vb) * reportSort.dir;
+      return String(va).localeCompare(String(vb)) * reportSort.dir;
+    });
+  }
+  return rows;
+}
+
+function sortReportTable(col) {
+  if (reportSort.col === col) {
+    reportSort.dir = -reportSort.dir;
+  } else {
+    reportSort.col = col;
+    reportSort.dir = 1;
+  }
+  renderReportTable();
+}
+
+function renderReportTable() {
+  const cols = ['name', 'hadir', 'tidak', 'pct', 'paidNum', 'absentCount'];
+  const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
+  const rows = getSortedReportRows();
+  
+  const arrows = cols.map((c, i) => reportSort.col === i ? (reportSort.dir === 1 ? ' ▲' : ' ▼') : '');
+  let html = reportHeader;
+  html += '<table class="report-table"><tr>' +
+    cols.map((c, i) => `<th style="cursor:pointer;user-select:none;" onclick="sortReportTable(${i})">${headers[i]}${arrows[i]}</th>`).join('') +
+    '</tr>';
+  
+  rows.forEach(r => {
     html += `<tr>
       <td>${r.name}</td>
       <td>${r.hadir}</td>
       <td class="absent">${r.tidak}</td>
-      <td>${pct}%</td>
-      <td class="absent">${r.absentDates.sort().join(', ')}</td>
+      <td>${r.pct}%</td>
+      <td style="color:${r.paidNum ? '#009900' : '#cc0000'};">${r.feeText}</td>
+      <td class="absent">${r.absentDates}</td>
     </tr>`;
   });
   
   html += '</table>';
-  output.innerHTML = html;
+  document.getElementById('reportOutput').innerHTML = html;
+}
+
+function exportReportExcel() {
+  const m = reportMeta;
+  const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
+  const data = [
+    [`Report ${m.month}/${m.year} - ${m.group}`],
+    [],
+    headers,
+    ...getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, r.feeText, r.absentDates])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 25 }, { wch: 9 }, { wch: 9 }, { wch: 14 }, { wch: 24 }, { wch: 40 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  XLSX.writeFile(wb, `Report_${m.group}_${m.year}-${m.month}.xlsx`);
+}
+
+function exportReportPDF() {
+  const m = reportMeta;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  doc.setFontSize(14);
+  doc.text(`Shah Alam City Academy - Report ${m.month}/${m.year} - ${m.group}`, 40, 40);
+  const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
+  const body = getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, r.feeText, r.absentDates]);
+  doc.autoTable({
+    head: [headers],
+    body: body,
+    startY: 60,
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    columnStyles: {
+      0: { cellWidth: 130 },
+      1: { cellWidth: 55, halign: 'center' },
+      2: { cellWidth: 55, halign: 'center' },
+      3: { cellWidth: 80, halign: 'center' },
+      4: { cellWidth: 130 }
+    }
+  });
+  doc.save(`Report_${m.group}_${m.year}-${m.month}.pdf`);
+}
+
+let feeState = {};
+
+async function loadFeeList() {
+  const group = document.getElementById('feeAgeGroup').value;
+  const month = document.getElementById('feeMonth').value;
+  const year = document.getElementById('feeYear').value;
+  const monthKey = `${year}-${month}`;
+  
+  const playersSnap = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const paySnap = await db.collection('saca').doc('feePayments').collection('records')
+    .where('month', '==', monthKey)
+    .where('group', '==', group)
+    .get();
+  
+  const payMap = {};
+  paySnap.forEach(doc => {
+    const data = doc.data();
+    payMap[data.playerId] = data.paid;
+  });
+  
+  feeState = {};
+  const list = document.getElementById('feeList');
+  list.innerHTML = '';
+  
+  playersSnap.forEach(doc => {
+    const player = doc.data();
+    const paid = payMap[doc.id] === true;
+    feeState[doc.id] = paid;
+    
+    const div = document.createElement('div');
+    div.className = 'player-row';
+    div.innerHTML = `
+      <span class="player-name">${player.name} <small style="color:#666;">(${player.fee || 'fee not set'})</small></span>
+      <label style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
+        <input type="radio" name="fee_${doc.id}" ${paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = true"> Paid
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
+        <input type="radio" name="fee_${doc.id}" ${!paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = false"> Unpaid
+      </label>
+    `;
+    list.appendChild(div);
+  });
+  
+  document.getElementById('feeSaveBar').classList.toggle('hidden', playersSnap.size === 0);
+}
+
+async function saveFeePayments() {
+  const group = document.getElementById('feeAgeGroup').value;
+  const month = document.getElementById('feeMonth').value;
+  const year = document.getElementById('feeYear').value;
+  const monthKey = `${year}-${month}`;
+  
+  const batch = db.batch();
+  Object.keys(feeState).forEach(playerId => {
+    const ref = db.collection('saca').doc('feePayments').collection('records').doc(`${monthKey}_${group}_${playerId}`);
+    batch.set(ref, {
+      month: monthKey,
+      group: group,
+      playerId: playerId,
+      paid: feeState[playerId]
+    });
+  });
+  
+  await batch.commit();
+  alert('Payment status saved!');
 }
 
 async function loadCoachAttendance() {
@@ -415,8 +809,8 @@ async function loadCoachAttendance() {
     div.className = 'player-row';
     div.innerHTML = `
       <span class="player-name">${player.name}</span>
-      <button class="attendance-btn hadir ${status === 'hadir' ? 'selected' : ''}" onclick="coachToggleAttendance('${doc.id}', 'hadir', this)">Hadir</button>
-      <button class="attendance-btn tidak ${status === 'tidak' ? 'selected' : ''}" onclick="coachToggleAttendance('${doc.id}', 'tidak', this)">Tidak Hadir</button>
+      <button class="attendance-btn hadir ${status === 'hadir' ? 'selected' : ''}" onclick="coachToggleAttendance('${doc.id}', 'hadir', this)">Present</button>
+      <button class="attendance-btn tidak ${status === 'tidak' ? 'selected' : ''}" onclick="coachToggleAttendance('${doc.id}', 'tidak', this)">Absent</button>
     `;
     list.appendChild(div);
   });
@@ -454,7 +848,7 @@ async function saveCoachAttendance() {
   });
   
   await batch.commit();
-  alert('Kehadiran disimpan!');
+  alert('Attendance saved!');
 }
 
 init();
