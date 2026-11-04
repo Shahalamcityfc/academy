@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.9.1</title>
+<title>Attendance - Shah Alam City Academy v1.11.1</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -56,6 +56,12 @@ tr:hover td { background: rgba(255,167,0,0.05); }
 .attendance-btn.selected.hadir { background: var(--green-dark); border-color: var(--green-dark); color: white; }
 .attendance-btn.selected.tidak { background: #cc0000; border-color: #cc0000; color: white; }
 .report-table td.absent { color: var(--red-bright); }
+.audience-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.audience-row span { font-size: 13px; color: var(--gray); }
+.aud-btn { padding: 8px 14px; font-size: 13px; background: var(--dark-2); color: var(--gray-light); border: 1px solid #333; border-radius: 4px; cursor: pointer; font-weight: 600; }
+.aud-btn.active { background: var(--gold); color: var(--black); border-color: var(--gold); }
+.site-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 22px; margin-top: 25px; font-size: 0.78rem; color: var(--gray); }
+.site-footer .gold { color: var(--gold); }
 .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
 .tab { padding: 10px 20px; cursor: pointer; border: 1px solid #333; background: var(--dark-2); color: var(--gray-light); border-radius: 4px 4px 0 0; font-weight: 700; }
 .tab.active { background: var(--gold); color: var(--black); border-color: var(--gold); }
@@ -98,7 +104,7 @@ a { color: var(--gold); }
       <h2>Attendance System 2026</h2>
     </div>
   </div>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.9.1</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.1</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -216,6 +222,11 @@ a { color: var(--gold); }
       </select>
       <button class="btn-primary" onclick="generateReport()">Generate Report</button>
       <div id="reportExportBar" class="hidden" style="margin-top:15px;">
+        <div class="audience-row">
+          <span>Report for:</span>
+          <button class="aud-btn active" id="audBtnParents" onclick="setReportAudience('parents')">Parents / Coach</button>
+          <button class="aud-btn" id="audBtnManagement" onclick="setReportAudience('management')">Management</button>
+        </div>
         <button class="btn-success" onclick="exportReportExcel()">Export to Excel (.xlsx)</button>
         <button class="btn-primary" onclick="exportReportPDF()">Export to PDF</button>
       </div>
@@ -263,6 +274,11 @@ a { color: var(--gold); }
     <div id="coachAttendanceList"></div>
     <button class="btn-success" onclick="saveCoachAttendance()">Save</button>
     <button class="btn-secondary" onclick="backToLogin()" style="margin-top:10px;">Back</button>
+  </div>
+
+  <div class="site-footer">
+    <span>© 2026 Shah Alam City Football Club. All rights reserved.</span>
+    <span>One City. <span class="gold">One Pack.</span></span>
   </div>
 </div>
 
@@ -722,18 +738,36 @@ async function generateReport() {
     };
   });
   
+  let totalPaid = 0;
+  players.forEach(p => {
+    if (payMap[p.id] === true) {
+      if (p.fee === 'RM120') totalPaid += 120;
+      else if (p.fee === 'RM80') totalPaid += 80;
+    }
+  });
+  
   reportRows = rows;
   reportMeta = { month: month, year: year, group: group };
+  reportTotalPaid = totalPaid;
   reportHeader = `<h4>Report ${month}/${year} - ${group}</h4>`;
   reportSort = { col: -1, dir: 1 };
   document.getElementById('reportExportBar').classList.remove('hidden');
-  renderReportTable();
+  setReportAudience('parents');
 }
 
 let reportRows = [];
 let reportHeader = '';
 let reportSort = { col: -1, dir: 1 };
 let reportMeta = null;
+let reportTotalPaid = 0;
+let reportAudience = 'parents';
+
+function setReportAudience(a) {
+  reportAudience = a;
+  document.getElementById('audBtnParents').classList.toggle('active', a === 'parents');
+  document.getElementById('audBtnManagement').classList.toggle('active', a === 'management');
+  renderReportTable();
+}
 
 function getSortedReportRows() {
   const cols = ['name', 'hadir', 'tidak', 'pct', 'paidNum', 'absentCount'];
@@ -780,36 +814,49 @@ function renderReportTable() {
       <td class="absent">${r.absentDates}</td>
     </tr>`;
   });
-  
+
+  if (reportAudience === 'management') {
+    html += `<tr style="font-weight:bold;border-top:2px solid #FFA700;">
+      <td colspan="4" style="text-align:right;">Total Collected (Paid)</td>
+      <td style="color:#25D366;">RM${reportTotalPaid}</td>
+      <td></td>
+    </tr>`;
+  }
+
   html += '</table>';
   document.getElementById('reportOutput').innerHTML = html;
 }
 
 function exportReportExcel() {
   const m = reportMeta;
+  const mgmt = reportAudience === 'management';
   const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
   const data = [
-    [`Report ${m.month}/${m.year} - ${m.group}`],
+    [`Report ${m.month}/${m.year} - ${m.group}${mgmt ? ' (Management)' : ''}`],
     [],
     headers,
     ...getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, r.feeText, r.absentDates])
   ];
+  if (mgmt) {
+    data.push([], ['Total Collected (Paid)', '', '', '', `RM${reportTotalPaid}`, '']);
+  }
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [{ wch: 25 }, { wch: 9 }, { wch: 9 }, { wch: 14 }, { wch: 24 }, { wch: 40 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Report');
-  XLSX.writeFile(wb, `Report_${m.group}_${m.year}-${m.month}.xlsx`);
+  XLSX.writeFile(wb, `Report_${m.group}_${m.year}-${m.month}${mgmt ? '_Management' : ''}.xlsx`);
 }
 
 function exportReportPDF() {
   const m = reportMeta;
+  const mgmt = reportAudience === 'management';
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   doc.setFontSize(14);
-  doc.text(`Shah Alam City Academy - Report ${m.month}/${m.year} - ${m.group}`, 40, 40);
+  doc.text(`Shah Alam City Academy - Report ${m.month}/${m.year} - ${m.group}${mgmt ? ' (Management)' : ''}`, 40, 40);
   const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
   const body = getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, r.feeText, r.absentDates]);
-  doc.autoTable({
+  const config = {
     head: [headers],
     body: body,
     startY: 60,
@@ -822,8 +869,13 @@ function exportReportPDF() {
       3: { cellWidth: 80, halign: 'center' },
       4: { cellWidth: 130 }
     }
-  });
-  doc.save(`Report_${m.group}_${m.year}-${m.month}.pdf`);
+  };
+  if (mgmt) {
+    config.foot = [[{ content: 'Total Collected (Paid)', colSpan: 4, styles: { halign: 'right' } }, { content: `RM${reportTotalPaid}`, styles: { halign: 'right' } }, '']];
+    config.footStyles = { fillColor: [28, 28, 28], textColor: [255, 199, 44], fontStyle: 'bold' };
+  }
+  doc.autoTable(config);
+  doc.save(`Report_${m.group}_${m.year}-${m.month}${mgmt ? '_Management' : ''}.pdf`);
 }
 
 let feeState = {};
