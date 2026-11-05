@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.11.4</title>
+<title>Attendance - Shah Alam City Academy v1.11.6</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -104,7 +104,7 @@ a { color: var(--gold); }
       <h2>Attendance System</h2>
     </div>
   </div>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.4</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.6</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -303,7 +303,6 @@ let attendanceState = {};
 const AGE_GROUPS = ['U8', 'U10', 'U12', 'U14', 'U16'];
 
 function init() {
-  document.getElementById('loginView').classList.remove('hidden');
   document.getElementById('adminDate').valueAsDate = new Date();
   document.getElementById('coachDate').valueAsDate = new Date();
   const now = new Date();
@@ -315,6 +314,16 @@ function init() {
   document.getElementById('footerYear').textContent = y;
   document.getElementById('reportMonth').value = String(now.getMonth() + 1).padStart(2, '0');
   document.getElementById('feeMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+  
+  if (sessionStorage.getItem('saca_admin') === '1') {
+    isAdmin = true;
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('adminView').classList.remove('hidden');
+    const savedTab = sessionStorage.getItem('saca_tab') || 'players';
+    showAdminTab(savedTab);
+  } else {
+    document.getElementById('loginView').classList.remove('hidden');
+  }
 }
 
 function populateYearSelect(id, currentYear) {
@@ -351,6 +360,7 @@ async function adminLogin() {
   
   if (doc.exists && doc.data().adminPassword === pwd) {
     isAdmin = true;
+    sessionStorage.setItem('saca_admin', '1');
     document.getElementById('loginView').classList.add('hidden');
     document.getElementById('adminView').classList.remove('hidden');
     loadAdminPlayers();
@@ -362,6 +372,8 @@ async function adminLogin() {
 function logout() {
   isAdmin = false;
   currentCoach = null;
+  sessionStorage.removeItem('saca_admin');
+  sessionStorage.removeItem('saca_tab');
   document.getElementById('adminView').classList.add('hidden');
   document.getElementById('coachView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
@@ -369,8 +381,11 @@ function logout() {
 }
 
 function showAdminTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.remove('active');
+    if (t.textContent.toLowerCase() === tab) t.classList.add('active');
+  });
+  sessionStorage.setItem('saca_tab', tab);
   
   document.getElementById('adminPlayers').classList.add('hidden');
   document.getElementById('adminAttendance').classList.add('hidden');
