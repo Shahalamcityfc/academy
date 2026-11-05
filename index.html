@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.11.6</title>
+<title>Attendance - Shah Alam City Academy v1.11.7</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -104,7 +104,7 @@ a { color: var(--gold); }
       <h2>Attendance System</h2>
     </div>
   </div>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.6</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.7</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -751,7 +751,7 @@ async function generateReport() {
     const r = report[p.id];
     const total = r.hadir + r.tidak;
     const pct = total > 0 ? Math.round((r.hadir / total) * 100) : 0;
-    const paid = payMap[p.id] === true;
+    const paid = p.fee === 'Scholarship' || payMap[p.id] === true;
     return {
       name: r.name,
       hadir: r.hadir,
@@ -766,7 +766,7 @@ async function generateReport() {
   
   let totalPaid = 0;
   players.forEach(p => {
-    if (payMap[p.id] === true) {
+    if (p.fee === 'Scholarship' || payMap[p.id] === true) {
       if (p.fee === 'RM120') totalPaid += 120;
       else if (p.fee === 'RM80') totalPaid += 80;
     }
@@ -935,20 +935,29 @@ async function loadFeeList() {
   
   playersSnap.forEach(doc => {
     const player = doc.data();
-    const paid = payMap[doc.id] === true;
+    const isScholarship = player.fee === 'Scholarship';
+    const paid = isScholarship || payMap[doc.id] === true;
     feeState[doc.id] = paid;
     
     const div = document.createElement('div');
     div.className = 'player-row';
-    div.innerHTML = `
-      <span class="player-name">${player.name} <small style="color:#999;">(${player.fee || 'fee not set'})</small></span>
-      <label class="fee-radio" style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
-        <input type="radio" name="fee_${doc.id}" ${paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = true"> Paid
-      </label>
-      <label class="fee-radio" style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
-        <input type="radio" name="fee_${doc.id}" ${!paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = false"> Unpaid
-      </label>
-    `;
+    
+    if (isScholarship) {
+      div.innerHTML = `
+        <span class="player-name">${player.name} <small style="color:#999;">(Scholarship)</small></span>
+        <span style="color:#25D366;font-weight:600;margin-left:10px;">Paid</span>
+      `;
+    } else {
+      div.innerHTML = `
+        <span class="player-name">${player.name} <small style="color:#999;">(${player.fee || 'fee not set'})</small></span>
+        <label class="fee-radio" style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
+          <input type="radio" name="fee_${doc.id}" ${paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = true"> Paid
+        </label>
+        <label class="fee-radio" style="display:inline-flex;align-items:center;gap:5px;margin:0 5px;">
+          <input type="radio" name="fee_${doc.id}" ${!paid ? 'checked' : ''} onchange="feeState['${doc.id}'] = false"> Unpaid
+        </label>
+      `;
+    }
     list.appendChild(div);
   });
   
