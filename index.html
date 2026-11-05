@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance - Shah Alam City Academy v1.11.3</title>
+<title>Attendance - Shah Alam City Academy v1.11.4</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -104,7 +104,7 @@ a { color: var(--gold); }
       <h2>Attendance System</h2>
     </div>
   </div>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.3</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.11.4</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -743,7 +743,7 @@ async function generateReport() {
       tidak: r.tidak,
       pct: pct,
       paidNum: paid ? 1 : 0,
-      feeText: `${p.fee || 'not set'} - ${paid ? 'Paid' : 'Unpaid'}`,
+      fee: p.fee || '',
       absentDates: r.absentDates.sort().join(', '),
       absentCount: r.tidak
     };
@@ -804,6 +804,11 @@ function sortReportTable(col) {
   renderReportTable();
 }
 
+function formatFeeText(r) {
+  const status = r.paidNum ? 'Paid' : 'Unpaid';
+  return reportAudience === 'management' ? `${r.fee || 'not set'} - ${status}` : status;
+}
+
 function renderReportTable() {
   const cols = ['name', 'hadir', 'tidak', 'pct', 'paidNum', 'absentCount'];
   const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
@@ -821,7 +826,7 @@ function renderReportTable() {
       <td>${r.hadir}</td>
       <td class="absent">${r.tidak}</td>
       <td>${r.pct}%</td>
-      <td style="color:${r.paidNum ? '#25D366' : '#ff6b6b'};">${r.feeText}</td>
+      <td style="color:${r.paidNum ? '#25D366' : '#ff6b6b'};">${formatFeeText(r)}</td>
       <td class="absent">${r.absentDates}</td>
     </tr>`;
   });
@@ -846,7 +851,7 @@ function exportReportExcel() {
     [`Report ${m.month}/${m.year} - ${m.group}${mgmt ? ' (Management)' : ''}`],
     [],
     headers,
-    ...getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, r.feeText, r.absentDates])
+    ...getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, formatFeeText(r), r.absentDates])
   ];
   if (mgmt) {
     data.push([], ['Total Collected (Paid)', '', '', '', `RM${reportTotalPaid}`, '']);
@@ -866,7 +871,7 @@ function exportReportPDF() {
   doc.setFontSize(14);
   doc.text(`Shah Alam City Academy - Report ${m.month}/${m.year} - ${m.group}${mgmt ? ' (Management)' : ''}`, 40, 40);
   const headers = ['Name', 'Present', 'Absent', 'Attendance %', 'Fee Status', 'Absent Dates'];
-  const body = getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, r.feeText, r.absentDates]);
+  const body = getSortedReportRows().map(r => [r.name, r.hadir, r.tidak, `${r.pct}%`, formatFeeText(r), r.absentDates]);
   const config = {
     head: [headers],
     body: body,
