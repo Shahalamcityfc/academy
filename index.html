@@ -3,7 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Player Management - Shah Alam City Academy v1.12.0</title>
+<!--
+  v1.13.1 (2026-11-09)
+  - Coach access code: coaches must enter a code to view/mark attendance
+  - Admin can set/change coach code in Players tab > Coach Access Code
+  - Coach session persists until Back/Logout
+  v1.13.0 (2026-11-08)
+  - Player profile fields: IC Number, Parent Contact, Parent Relation (BAPA/IBU)
+  - Add player form captures IC, parent contact, and relation
+  - Player list shows IC and parent info below player name
+  - Edit button + modal to update player profile fields
+  - "View Details (Table)" toggle — Excel-style table view
+  - "By Age" view — players grouped by actual age from IC (tab currently hidden)
+-->
+<title>Player Management - Shah Alam City Academy v1.13.1</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -104,7 +117,7 @@ a { color: var(--gold); }
       <h2>Player Management System</h2>
     </div>
   </div>
-  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.12.0</p>
+  <p style="color:#999;font-size:12px;margin-bottom:20px;">Version 1.13.1</p>
 
   <div id="loginView">
     <h3>Admin Login</h3>
@@ -119,6 +132,7 @@ a { color: var(--gold); }
       <option value="U14">U14</option>
       <option value="U16">U16</option>
     </select>
+    <input type="password" id="coachCode" placeholder="Coach code" style="width:140px;" onkeydown="if(event.key==='Enter') coachLogin()">
     <button class="btn-primary" onclick="coachLogin()">Start</button>
   </div>
 
@@ -126,6 +140,7 @@ a { color: var(--gold); }
     <button class="btn-secondary" onclick="logout()" style="position:absolute;top:20px;right:20px;">Logout</button>
     <div class="tabs">
       <div class="tab active" onclick="showAdminTab('players')">Players</div>
+      <div class="tab hidden" onclick="showAdminTab('byAge')">By Age</div>
       <div class="tab" onclick="showAdminTab('attendance')">Attendance</div>
       <div class="tab" onclick="showAdminTab('fees')">Fees</div>
       <div class="tab" onclick="showAdminTab('reports')">Reports</div>
@@ -141,8 +156,15 @@ a { color: var(--gold); }
         <option value="U16">U16</option>
       </select>
       
-      <div style="margin:15px 0;display:flex;flex-wrap:wrap;align-items:center;">
-        <input type="text" id="newPlayerName" placeholder="New player name" style="flex:1;min-width:150px;">
+      <div style="margin:15px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        <input type="text" id="newPlayerName" placeholder="Player name" style="flex:1;min-width:150px;">
+        <input type="text" id="newPlayerIC" placeholder="IC Number" style="width:140px;">
+        <input type="text" id="newPlayerParent" placeholder="Parent contact" style="width:140px;">
+        <select id="newPlayerRelation" style="width:100px;">
+          <option value="">- Relation -</option>
+          <option value="BAPA">BAPA</option>
+          <option value="IBU">IBU</option>
+        </select>
         <button class="btn-success" onclick="addPlayer()">Add</button>
         <button class="btn-primary" onclick="toggleBatchAdd()">Batch Add</button>
         <button id="bulkDeleteBar" class="btn-danger hidden" style="margin-left:10px;" onclick="bulkRemovePlayers()">Remove Selected Players</button>
@@ -157,6 +179,27 @@ a { color: var(--gold); }
       </div>
 
       <div id="playerList"></div>
+
+      <div id="playerTable" class="hidden" style="margin-top:15px;overflow-x:auto;">
+        <table style="min-width:600px;">
+          <thead>
+            <tr>
+              <th style="width:40px;">BIL</th>
+              <th>Nama</th>
+              <th>No IC</th>
+              <th>Contact Parents</th>
+              <th style="width:80px;">Relation</th>
+              <th style="width:80px;">Fee</th>
+              <th style="width:100px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="playerTableBody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:15px;display:flex;gap:10px;">
+        <button class="btn-secondary" id="viewToggleBtn" onclick="togglePlayerView()">View Details (Table)</button>
+      </div>
 
       <div id="feeSaveAllBar" class="hidden" style="margin-top:15px;">
         <button class="btn-success" onclick="saveAllFees()">Save All Fee Changes</button>
@@ -179,6 +222,21 @@ a { color: var(--gold); }
       <hr style="margin:20px 0;">
       <button class="btn-danger" onclick="resetAgeGroupData()">Reset <span id="resetGroupLabel">U8</span> Player List</button>
       <p style="color:#999;font-size:12px;margin-top:5px;">Removes all players in the selected age group. Requires admin password.</p>
+
+      <hr style="margin:20px 0;">
+      <h4>Coach Access Code</h4>
+      <p style="color:#999;font-size:12px;margin-bottom:8px;">Code coaches need to enter to view/mark attendance. Leave empty to disable coach access.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        <input type="text" id="coachCodeSetting" placeholder="Set new coach code" style="flex:1;min-width:180px;">
+        <button class="btn-success" onclick="saveCoachCode()">Save Code</button>
+      </div>
+      <p id="coachCodeStatus" style="color:#999;font-size:12px;margin-top:8px;"></p>
+    </div>
+
+    <div id="adminByAge" class="hidden">
+      <h3>Players by Age</h3>
+      <p style="color:#999;font-size:12px;margin-bottom:15px;">Grouped by actual age calculated from IC number</p>
+      <div id="byAgeContent"></div>
     </div>
 
     <div id="adminAttendance" class="hidden">
@@ -264,6 +322,7 @@ a { color: var(--gold); }
   </div>
 
   <div id="coachView" class="hidden">
+    <div style="display:inline-block;background:var(--maroon);color:var(--white);padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">🏃 Coach Page</div>
     <h3>Attendance - <span id="coachGroupDisplay"></span></h3>
     <input type="date" id="coachDate" onchange="loadCoachAttendance()">
     <div id="coachAttendanceList"></div>
@@ -315,13 +374,20 @@ function init() {
   document.getElementById('footerYear').textContent = y;
   document.getElementById('reportMonth').value = String(now.getMonth() + 1).padStart(2, '0');
   document.getElementById('feeMonth').value = String(now.getMonth() + 1).padStart(2, '0');
-  
+
   if (sessionStorage.getItem('saca_admin') === '1') {
     isAdmin = true;
     document.getElementById('loginView').classList.add('hidden');
     document.getElementById('adminView').classList.remove('hidden');
     const savedTab = sessionStorage.getItem('saca_tab') || 'players';
     showAdminTab(savedTab);
+  } else if (sessionStorage.getItem('saca_coach')) {
+    const group = sessionStorage.getItem('saca_coach');
+    currentCoach = { group: group };
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('coachView').classList.remove('hidden');
+    document.getElementById('coachGroupDisplay').textContent = group;
+    loadCoachAttendance();
   } else {
     document.getElementById('loginView').classList.remove('hidden');
   }
@@ -338,19 +404,36 @@ function populateYearSelect(id, currentYear) {
   });
 }
 
-function coachLogin() {
+async function coachLogin() {
   const group = document.getElementById('coachAgeGroupSelect').value;
+  const code = document.getElementById('coachCode').value;
+
+  const doc = await db.collection('saca').doc('config').get();
+  const coachCode = doc.exists ? doc.data().coachCode : null;
+
+  if (!coachCode) {
+    alert('Coach code not set yet. Ask admin to set it in Settings.');
+    return;
+  }
+  if (code !== coachCode) {
+    alert('Wrong coach code!');
+    return;
+  }
+
   currentCoach = { group: group };
-  
+  sessionStorage.setItem('saca_coach', group);
+
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('coachView').classList.remove('hidden');
   document.getElementById('coachGroupDisplay').textContent = group;
-  
+
   loadCoachAttendance();
 }
 
 function backToLogin() {
   currentCoach = null;
+  sessionStorage.removeItem('saca_coach');
+  document.getElementById('coachCode').value = '';
   document.getElementById('coachView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
 }
@@ -358,7 +441,7 @@ function backToLogin() {
 async function adminLogin() {
   const pwd = document.getElementById('adminPassword').value;
   const doc = await db.collection('saca').doc('config').get();
-  
+
   if (doc.exists && doc.data().adminPassword === pwd) {
     isAdmin = true;
     sessionStorage.setItem('saca_admin', '1');
@@ -375,20 +458,23 @@ function logout() {
   currentCoach = null;
   sessionStorage.removeItem('saca_admin');
   sessionStorage.removeItem('saca_tab');
+  sessionStorage.removeItem('saca_coach');
   document.getElementById('adminView').classList.add('hidden');
   document.getElementById('coachView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
   document.getElementById('adminPassword').value = '';
+  document.getElementById('coachCode').value = '';
 }
 
 function showAdminTab(tab) {
   document.querySelectorAll('.tab').forEach(t => {
     t.classList.remove('active');
-    if (t.textContent.toLowerCase() === tab) t.classList.add('active');
+    if (t.textContent.toLowerCase() === tab || (tab === 'byAge' && t.textContent === 'By Age')) t.classList.add('active');
   });
   sessionStorage.setItem('saca_tab', tab);
   
   document.getElementById('adminPlayers').classList.add('hidden');
+  document.getElementById('adminByAge').classList.add('hidden');
   document.getElementById('adminAttendance').classList.add('hidden');
   document.getElementById('adminReports').classList.add('hidden');
   document.getElementById('adminFees').classList.add('hidden');
@@ -396,6 +482,9 @@ function showAdminTab(tab) {
   if (tab === 'players') {
     document.getElementById('adminPlayers').classList.remove('hidden');
     loadAdminPlayers();
+  } else if (tab === 'byAge') {
+    document.getElementById('adminByAge').classList.remove('hidden');
+    loadByAgeView();
   } else if (tab === 'attendance') {
     document.getElementById('adminAttendance').classList.remove('hidden');
     loadAdminAttendance();
@@ -407,6 +496,7 @@ function showAdminTab(tab) {
 }
 
 let feePending = {};
+let playerViewMode = 'list';
 
 async function loadAdminPlayers() {
   const group = document.getElementById('adminAgeGroup').value;
@@ -430,10 +520,16 @@ async function loadAdminPlayers() {
     const player = doc.data();
     const div = document.createElement('div');
     div.className = 'player-row';
+    const icDisplay = player.ic ? ` | IC: ${player.ic}` : '';
+    const parentDisplay = player.parentContact ? ` | ${player.parentRelation || 'PARENT'}: ${player.parentContact}` : '';
+    const infoLine = (icDisplay || parentDisplay) ? `<div style="font-size:11px;color:#999;margin-top:2px;">${icDisplay}${parentDisplay}</div>` : '';
     div.innerHTML = `
       <label style="display:flex;align-items:center;gap:8px;flex:1;">
         <input type="checkbox" class="player-check" data-id="${doc.id}" onchange="updateBulkDeleteBar()">
-        <span class="player-name">${player.name}</span>
+        <div>
+          <span class="player-name">${player.name}</span>
+          ${infoLine}
+        </div>
       </label>
       <select id="fee_${doc.id}" style="margin:0;" data-original="${player.fee || ''}" onchange="onFeeSelectChange('${doc.id}', this)">
         <option value="">- Select fee -</option>
@@ -441,6 +537,7 @@ async function loadAdminPlayers() {
         <option value="RM80" ${player.fee === 'RM80' ? 'selected' : ''}>RM80</option>
         <option value="Scholarship" ${player.fee === 'Scholarship' ? 'selected' : ''}>Scholarship</option>
       </select>
+      <button class="btn-secondary" onclick="editPlayer('${group}', '${doc.id}')" style="margin:0 5px;font-size:12px;padding:6px 10px;">Edit</button>
       <button class="btn-success" onclick="savePlayerFee('${group}', '${doc.id}')" style="margin:0 5px;">Save</button>
       <button class="btn-danger" onclick="removePlayer('${group}', '${doc.id}')">Remove</button>
     `;
@@ -449,6 +546,14 @@ async function loadAdminPlayers() {
   
   document.getElementById('bulkTransferBar').classList.add('hidden');
   document.getElementById('bulkDeleteBar').classList.add('hidden');
+
+  const configDoc = await db.collection('saca').doc('config').get();
+  const hasCoachCode = configDoc.exists && configDoc.data().coachCode;
+  document.getElementById('coachCodeStatus').textContent = hasCoachCode ? 'Coach code is active.' : 'No coach code set — coach access is disabled.';
+
+  if (playerViewMode === 'table') {
+    renderPlayerTable();
+  }
 }
 
 function onFeeSelectChange(playerId, selectEl) {
@@ -558,39 +663,55 @@ async function resetAgeGroupData() {
   const group = document.getElementById('adminAgeGroup').value;
   const pwd = prompt(`Enter admin password to reset ${group} player list:`);
   if (pwd === null) return;
-  
+
   const doc = await db.collection('saca').doc('config').get();
   if (!doc.exists || doc.data().adminPassword !== pwd) {
     alert('Wrong password!');
     return;
   }
-  
+
   if (!confirm(`Remove ALL players in ${group}? Attendance history will be kept.`)) return;
-  
+
   const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
   const batch = db.batch();
   snapshot.forEach(d => batch.update(d.ref, { active: false }));
   await batch.commit();
-  
+
   alert(`${snapshot.size} player(s) removed from ${group}.`);
   loadAdminPlayers();
+}
+
+async function saveCoachCode() {
+  const code = document.getElementById('coachCodeSetting').value.trim();
+  await db.collection('saca').doc('config').set({ coachCode: code }, { merge: true });
+  document.getElementById('coachCodeSetting').value = '';
+  document.getElementById('coachCodeStatus').textContent = code ? 'Coach code updated.' : 'Coach access disabled.';
+  setTimeout(() => { document.getElementById('coachCodeStatus').textContent = ''; }, 3000);
 }
 
 async function addPlayer() {
   const group = document.getElementById('adminAgeGroup').value;
   const name = document.getElementById('newPlayerName').value.trim();
-  
+  const ic = document.getElementById('newPlayerIC').value.trim();
+  const parent = document.getElementById('newPlayerParent').value.trim();
+  const relation = document.getElementById('newPlayerRelation').value;
+
   if (!name) {
     alert('Please enter player name!');
     return;
   }
-  
-  await db.collection('saca').doc('players').collection(group).add({
-    name: name,
-    active: true
-  });
-  
+
+  const playerData = { name: name, active: true };
+  if (ic) playerData.ic = ic;
+  if (parent) playerData.parentContact = parent;
+  if (relation) playerData.parentRelation = relation;
+
+  await db.collection('saca').doc('players').collection(group).add(playerData);
+
   document.getElementById('newPlayerName').value = '';
+  document.getElementById('newPlayerIC').value = '';
+  document.getElementById('newPlayerParent').value = '';
+  document.getElementById('newPlayerRelation').value = '';
   loadAdminPlayers();
 }
 
@@ -641,12 +762,204 @@ async function batchAddPlayers() {
 
 async function removePlayer(group, playerId) {
   if (!confirm('Remove this player?')) return;
-  
+
   await db.collection('saca').doc('players').collection(group).doc(playerId).update({
     active: false
   });
-  
+
   loadAdminPlayers();
+}
+
+async function editPlayer(group, playerId) {
+  const doc = await db.collection('saca').doc('players').collection(group).doc(playerId).get();
+  const player = doc.data();
+
+  const modal = document.createElement('div');
+  modal.id = 'editPlayerModal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.innerHTML = `
+    <div style="background:#1C1C1C;padding:25px;border-radius:10px;max-width:400px;width:90%;border:1px solid #444;">
+      <h3 style="margin-bottom:15px;color:#FFA700;">Edit Player Info</h3>
+      <div style="margin-bottom:10px;">
+        <label style="display:block;color:#999;font-size:12px;margin-bottom:4px;">Name</label>
+        <input type="text" id="editName" value="${player.name}" style="width:100%;" readonly>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="display:block;color:#999;font-size:12px;margin-bottom:4px;">IC Number</label>
+        <input type="text" id="editIC" value="${player.ic || ''}" placeholder="e.g. 123456-01-2345" style="width:100%;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="display:block;color:#999;font-size:12px;margin-bottom:4px;">Parent Contact</label>
+        <input type="text" id="editParent" value="${player.parentContact || ''}" placeholder="e.g. 012-3456789" style="width:100%;">
+      </div>
+      <div style="margin-bottom:15px;">
+        <label style="display:block;color:#999;font-size:12px;margin-bottom:4px;">Relation</label>
+        <select id="editRelation" style="width:100%;">
+          <option value="">- Select -</option>
+          <option value="BAPA" ${player.parentRelation === 'BAPA' ? 'selected' : ''}>BAPA</option>
+          <option value="IBU" ${player.parentRelation === 'IBU' ? 'selected' : ''}>IBU</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn-secondary" onclick="document.getElementById('editPlayerModal').remove()">Cancel</button>
+        <button class="btn-success" onclick="savePlayerEdit('${group}', '${playerId}')">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function savePlayerEdit(group, playerId) {
+  const ic = document.getElementById('editIC').value.trim();
+  const parent = document.getElementById('editParent').value.trim();
+  const relation = document.getElementById('editRelation').value;
+
+  const updateData = {};
+  updateData.ic = ic;
+  updateData.parentContact = parent;
+  updateData.parentRelation = relation;
+
+  await db.collection('saca').doc('players').collection(group).doc(playerId).update(updateData);
+
+  document.getElementById('editPlayerModal').remove();
+  loadAdminPlayers();
+}
+
+function togglePlayerView() {
+  const listEl = document.getElementById('playerList');
+  const tableEl = document.getElementById('playerTable');
+  const btn = document.getElementById('viewToggleBtn');
+
+  if (playerViewMode === 'list') {
+    listEl.classList.add('hidden');
+    tableEl.classList.remove('hidden');
+    btn.textContent = 'View List';
+    playerViewMode = 'table';
+    renderPlayerTable();
+  } else {
+    listEl.classList.remove('hidden');
+    tableEl.classList.add('hidden');
+    btn.textContent = 'View Details (Table)';
+    playerViewMode = 'list';
+  }
+}
+
+async function renderPlayerTable() {
+  const group = document.getElementById('adminAgeGroup').value;
+  const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+  const tbody = document.getElementById('playerTableBody');
+  tbody.innerHTML = '';
+
+  let bil = 0;
+  snapshot.forEach(doc => {
+    bil++;
+    const player = doc.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${bil}</td>
+      <td>${player.name}</td>
+      <td>${player.ic || '-'}</td>
+      <td>${player.parentContact || '-'}</td>
+      <td>${player.parentRelation || '-'}</td>
+      <td>${player.fee || '-'}</td>
+      <td>
+        <button class="btn-secondary" style="font-size:11px;padding:4px 8px;margin:0;" onclick="editPlayer('${group}', '${doc.id}')">Edit</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (bil === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No players found</td></tr>';
+  }
+}
+
+async function loadByAgeView() {
+  const ageGroups = ['U8', 'U10', 'U12', 'U14', 'U16'];
+  const currentYear = new Date().getFullYear();
+  const allPlayers = [];
+
+  // Fetch all players from all age groups
+  for (const group of ageGroups) {
+    const snapshot = await db.collection('saca').doc('players').collection(group).where('active', '==', true).get();
+    snapshot.forEach(doc => {
+      const player = doc.data();
+      player.id = doc.id;
+      player.ageGroup = group;
+      allPlayers.push(player);
+    });
+  }
+
+  // Calculate age from IC and group by age
+  const ageMap = {};
+  allPlayers.forEach(player => {
+    let age = null;
+    if (player.ic) {
+      const icYear = parseInt(player.ic.substring(0, 2));
+      const birthYear = icYear >= 50 ? 1900 + icYear : 2000 + icYear;
+      age = currentYear - birthYear;
+    }
+    
+    if (age !== null) {
+      if (!ageMap[age]) ageMap[age] = [];
+      ageMap[age].push(player);
+    }
+  });
+
+  const container = document.getElementById('byAgeContent');
+  container.innerHTML = '';
+
+  const ages = Object.keys(ageMap).map(Number).sort((a, b) => a - b);
+
+  if (ages.length === 0) {
+    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No players with IC numbers found. Please add IC numbers to player profiles.</p>';
+    return;
+  }
+
+  // Render table for each age group
+  for (const age of ages) {
+    const players = ageMap[age].sort((a, b) => a.name.localeCompare(b.name));
+    
+    const section = document.createElement('div');
+    section.style.marginBottom = '30px';
+    section.innerHTML = `<h4 style="color:#FFA700;margin-bottom:10px;">${age} TAHUN</h4>`;
+    
+    const table = document.createElement('table');
+    table.style.minWidth = '600px';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th style="width:40px;">BIL</th>
+          <th>Nama</th>
+          <th>No IC</th>
+          <th>Contact Parents</th>
+          <th style="width:80px;">Fee</th>
+          <th style="width:80px;">Age Group</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    
+    const tbody = table.querySelector('tbody');
+    players.forEach((player, idx) => {
+      const tr = document.createElement('tr');
+      const contactDisplay = player.parentContact 
+        ? `${player.parentContact}${player.parentRelation ? ' (' + player.parentRelation + ')' : ''}`
+        : '-';
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td>${player.name}</td>
+        <td>${player.ic || '-'}</td>
+        <td>${contactDisplay}</td>
+        <td>${player.fee || '-'}</td>
+        <td>${player.ageGroup}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    section.appendChild(table);
+    container.appendChild(section);
+  }
 }
 
 async function loadAdminAttendance() {
@@ -1059,18 +1372,18 @@ function generateReceipt(playerId, playerName, feeLabel, group, month, year) {
   y = 290;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  const labelX = rx - 170;
+  const labelX = rx - 110;
   const valX = rx - 100;
   doc.setTextColor(120, 120, 120);
-  doc.text('Invoice Date :', labelX, y);
+  doc.text('Invoice Date :', labelX, y, { align: 'right' });
   doc.setTextColor(30, 30, 30);
   doc.text(dateStr, valX, y); y += 18;
   doc.setTextColor(120, 120, 120);
-  doc.text('Terms :', labelX, y);
+  doc.text('Terms :', labelX, y, { align: 'right' });
   doc.setTextColor(30, 30, 30);
   doc.text('Due on Receipt', valX, y); y += 18;
   doc.setTextColor(120, 120, 120);
-  doc.text('Due Date :', labelX, y);
+  doc.text('Due Date :', labelX, y, { align: 'right' });
   doc.setTextColor(30, 30, 30);
   doc.text(dateStr, valX, y);
 
